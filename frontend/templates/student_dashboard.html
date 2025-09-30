@@ -1,0 +1,277 @@
+{% include 'partials/header.html' %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Student Dashboard</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+body{font-family:'Segoe UI',Tahoma,Verdana,sans-serif;background:#f8f9fa;}
+.dashboard-container{max-width:1200px;margin:20px auto;padding:20px;background:#fff;border-radius:10px;box-shadow:0 0 10px rgba(0,0,0,.05);}
+.tab-btn{padding:10px 20px;border:none;cursor:pointer;margin-right:5px;border-radius:6px;}
+.tab-btn.active{background:#007bff;color:#fff;}
+.tab-content{display:none}.tab-content.active{display:block}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px;}
+.card{background:#e9f5ff;padding:20px;border-radius:12px;box-shadow:0 4px 6px rgba(0,0,0,.1);transition:.2s}.card:hover{transform:translateY(-5px);}
+.table-container{overflow-x:auto;max-height:500px;overflow-y:auto}
+.repo-assignments-card{display:none;margin-top:20px;background:#f1f9ff;padding:20px;border-radius:10px;max-height:500px;overflow-y:auto;box-shadow:0 0 10px rgba(0,0,0,.1);}
+.notification-bell{position:relative;cursor:pointer;font-size:20px;float:right;}
+.notification-bell .badge{position:absolute;top:-5px;right:-8px;background:red;color:#fff;border-radius:50%;padding:2px 6px;font-size:12px;}
+#notifDropdown{display:none;position:absolute;right:20px;top:60px;background:#fff;border:1px solid #ddd;width:250px;box-shadow:0 2px 8px rgba(0,0,0,.2);z-index:9999;border-radius:6px;}
+#notifDropdown ul{list-style:none;margin:0;padding:0;max-height:200px;overflow-y:auto}
+#notifDropdown li{padding:10px;border-bottom:1px solid #eee;font-size:14px;}
+.toast{visibility:hidden;min-width:250px;background:#333;color:#fff;border-radius:6px;padding:10px;position:fixed;z-index:10000;right:20px;bottom:20px;font-size:14px;opacity:0;transition:opacity .5s,bottom .5s;}
+.toast.show{visibility:visible;opacity:1;bottom:40px;}
+#notifDropdown ul {
+  list-style:none;
+  margin:0;
+  padding:0;
+  max-height:300px;     /* dropdown is scrollable */
+  overflow-y:auto;
+}
+
+#notifFeed {
+  max-height:400px;     /* feed is scrollable */
+  overflow-y:auto;
+  padding:0;
+  list-style:none;
+}
+
+#notifFeed li {
+  padding:10px;
+  border-bottom:1px solid #eee;
+  transition:background 0.2s;
+}
+
+#notifFeed li.unread {
+  background:#eaf3ff;   /* light blue background */
+  font-weight:600;
+  color:#0d6efd;        /* Bootstrap primary blue */
+}
+
+#notifFeed li.read {
+  background:#fff;
+  color:#333;
+}
+
+
+</style>
+</head>
+<body>
+<div class="dashboard-container">
+  <h2 class="mb-4">📊 Student Dashboard 
+    <span class="notification-bell" onclick="toggleDropdown()">🔔<span class="badge" id="notifCount">3</span></span>
+  </h2>
+  <div id="notifDropdown"><ul id="notifList"></ul></div>
+  <div id="notifToast" class="toast"></div>
+
+  <!-- Tabs -->
+  <div class="tabs mb-3">
+    <button class="tab-btn active" onclick="openTab('repositories',this)">📂 Repositories</button>
+    <button class="tab-btn" onclick="openTab('assignments',this)">📘 All Assignments</button>
+  </div>
+
+  <!-- Repositories -->
+  <div id="repositories" class="tab-content active">
+    {% if repo_detail %}
+    <div id="repoGrid" class="card-grid">
+      {% for repo in repo_detail %}
+      <div class="card">
+        <div class="card-title">{{ repo.title }}</div>
+        <p><strong>Repo ID:</strong> {{ repo.repository_id }}</p>
+        <p><strong>Created By:</strong> {{ repo.created_by_name }}</p>
+        <p><strong>Questions:</strong> {{ repo.question_count }}</p>
+        <button class="btn btn-primary w-100" onclick="loadRepoAssignments({{ repo.repository_id }},'{{ repo.title|e }}')">View Assignments</button>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}<p class="text-muted">No repositories available.</p>{% endif %}
+
+    <div id="repoAssignmentsCard" class="repo-assignments-card">
+      <button class="btn btn-secondary mb-3" onclick="backToRepos()">← Back</button>
+      <h5 id="repoAssignmentsTitle"></h5>
+      <div id="repoAssignmentsTable" class="table-container"></div>
+    </div>
+  </div>
+
+  <!-- Assignments -->
+  <div id="assignments" class="tab-content">
+    {% if assignments %}
+    <div class="table-container">
+      <table class="table table-hover table-bordered align-middle">
+        <thead class="table-primary"><tr><th>Repo ID</th><th>Assignment ID</th><th>Title</th><th>Instructor</th><th>Difficulty</th><th>Due Date</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody>
+        {% for a in assignments %}
+          <tr>
+            <td>{{ a.repository_id }}</td><td>{{ a.assignment_id }}</td><td>{{ a.title }}</td><td>{{ a.instructor_name }}</td><td>{{ a.difficulty_level }}</td>
+            <td>{% if a.due_date < now %}<span class="text-danger fw-bold">{{ a.due_date.strftime('%d %b %Y') }}</span>{% else %}{{ a.due_date.strftime('%d %b %Y') }}{% endif %}</td>
+            <td>Not Complete</td>
+            <td><a href="/code_editor/{{ a.assignment_id }}" class="btn btn-success btn-sm w-100">Submit</a></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<p class="text-muted">No assignments available.</p>{% endif %}
+  </div>
+
+  <!-- Feed -->
+  <div class="card mt-4"><h5>Recent Notifications</h5><ul id="notifFeed"><li>📢 Assignment 2 uploaded</li><li>✅ You scored 85% in Assignment 1</li><li>⚠️ Server maintenance tonight</li></ul></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function openTab(id,btn){
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function loadRepoAssignments(rid,title){
+  fetch(`/fetch_assignments_for_student?repo_id=${encodeURIComponent(rid)}`)
+    .then(r=>r.json())
+    .then(data=>{
+      let c=document.getElementById('repoAssignmentsTable');
+      if(!data||!data.length){
+        c.innerHTML='<p class="text-muted">No assignments found.</p>'
+      }else{
+        let h='<table class="table table-hover table-bordered align-middle"><thead class="table-secondary"><tr><th>ID</th><th>Title</th><th>Instructor</th><th>Difficulty</th><th>Due</th><th>Status</th><th>Action</th></tr></thead><tbody>';
+        data.forEach(a=>{
+          h+=`<tr>
+                <td>${a.assignment_id}</td>
+                <td>${escapeHtml(a.title)}</td>
+                <td>${escapeHtml(a.instructor_name)}</td>
+                <td>${escapeHtml(a.difficulty_level)}</td>
+                <td>${escapeHtml(a.due_date)}</td>
+                <td>Not Complete</td>
+                <td><a href="/code_editor/${encodeURIComponent(a.assignment_id)}" class="btn btn-success btn-sm w-100">Submit</a></td>
+              </tr>`;
+        });
+        c.innerHTML=h+'</tbody></table>';
+      }
+      document.getElementById('repoAssignmentsTitle').innerText=`Assignments in Repository: ${title}`;
+      document.getElementById('repoAssignmentsCard').style.display='block';
+      document.getElementById('repoGrid').style.display='none';
+    })
+    .catch(e=>{
+      console.error(e);
+      document.getElementById('repoAssignmentsTable').innerHTML='<p class="text-danger">Failed to load assignments.</p>';
+    });
+}
+
+function backToRepos(){
+  document.getElementById('repoAssignmentsCard').style.display='none';
+  document.getElementById('repoGrid').style.display='grid';
+}
+
+function escapeHtml(s){
+  return typeof s!=='string'?s:s.replace(/&/g,'&amp;')
+                              .replace(/</g,'&lt;')
+                              .replace(/>/g,'&gt;')
+                              .replace(/"/g,'&quot;')
+                              .replace(/'/g,'&#039;');
+}
+
+function toggleDropdown(){
+  let d=document.getElementById('notifDropdown');
+  d.style.display=d.style.display==='block'?'none':'block';
+}
+
+function showToast(m){
+  let t=document.getElementById('notifToast');
+  t.innerHTML=m;
+  t.className='toast show';
+  setTimeout(()=>{t.className=t.className.replace('show','');},4000);
+}
+
+// ---------------------------
+// ✅ Real notification loading
+// ---------------------------
+let lastCount = 0;
+document.addEventListener("DOMContentLoaded", () => {
+  const userId = {{ session['user']['user_id'] }};
+const userRole = "{{ session['user']['role']|lower }}";
+loadNotifications(userId, userRole);
+setInterval(() => loadNotifications(userId, userRole), 30000);
+});
+
+function toggleDropdown(){
+  let d=document.getElementById('notifDropdown');
+  d.style.display=d.style.display==='block'?'none':'block';
+}
+
+function loadNotifications(userId, userRole){
+  fetch(`/notifications/feed/${userId}?role=${userRole}&limit=100`)
+    .then(r => r.json())
+    .then(res => {
+      if (!res || res.status === "error") return;
+
+      const data = res.feed || [];
+      let notifList = document.getElementById("notifList");
+      let notifFeed = document.getElementById("notifFeed");
+      notifList.innerHTML = "";
+      notifFeed.innerHTML = "";
+
+      let unreadCount = data.filter(n => n.status === "unread").length;
+      document.getElementById("notifCount").innerText = unreadCount;
+
+      if (unreadCount > lastCount && data.length > 0) {
+        let latest = data[0].message;
+        alert("📢 " + latest);
+      }
+      lastCount = unreadCount;
+
+      data.forEach(n => {
+        // dropdown item
+        let li = document.createElement("li");
+        li.innerHTML = `${escapeHtml(n.message)} <small class="text-muted">(${n.source})</small>`;
+        li.classList.add(n.status === "unread" ? "unread" : "read");
+
+        if (n.source === "notification") {
+          // only personal notifications are markable as read
+          li.style.cursor = "pointer";
+          li.onclick = () => markNotificationRead(n.notification_id, userId);
+        }
+        notifList.appendChild(li);
+
+        // feed item
+        let feedLi = document.createElement("li");
+        feedLi.innerHTML = li.innerHTML;
+        feedLi.classList.add(n.status === "unread" ? "unread" : "read");
+
+        if (n.source === "notification" && n.status === "unread") {
+          feedLi.style.cursor = "pointer";
+          feedLi.onclick = () => markNotificationRead(n.notification_id, userId);
+        }
+        notifFeed.appendChild(feedLi);
+      });
+    })
+    .catch(e => console.error("Error loading notifications:", e));
+}
+
+
+function markNotificationRead(notificationId,userId){
+  fetch(`/notifications/mark_read/${notificationId}`, {method:"PUT"})
+    .then(r=>r.json())
+    .then(res=>{
+      if(res.status==="success") loadNotifications(userId);
+      else console.error("Mark read failed:",res.error);
+    })
+    .catch(e=>console.error("Error marking notification read:",e));
+}
+
+function escapeHtml(s){
+  return typeof s!=='string'?s:s.replace(/&/g,'&amp;')
+                              .replace(/</g,'&lt;')
+                              .replace(/>/g,'&gt;')
+                              .replace(/"/g,'&quot;')
+                              .replace(/'/g,'&#039;');
+}
+
+
+</script>
+
+</body>
+</html>
+{% include 'partials/footer.html' %}

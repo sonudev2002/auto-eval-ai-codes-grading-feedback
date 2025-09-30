@@ -1,0 +1,47 @@
+<!-- Font Awesome CDN -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<footer style="
+  background-color: #1a1a1a;
+  color: #ccc;
+  padding: 10px 20px;
+  font-family: 'Segoe UI', sans-serif;
+  font-size: 0.95rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+">
+
+  <!-- Logo + Name -->
+  <div style="display: flex; align-items: center; gap: 8px;">
+    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo" style="height: 32px;">
+    <strong style="font-size: 1rem;">AutoEval</strong>
+  </div>
+
+  <!-- Quick Links -->
+  <div style="display: flex; gap: 15px;">
+    <a href="{{ url_for('index') }}" style="color: #87cefa; text-decoration: none;">Home</a>
+    <a href="/about" style="color: #87cefa; text-decoration: none;">About</a>
+    <a href="/contact" style="color: #87cefa; text-decoration: none;">Contact</a>
+  </div>
+
+  <!-- Social Icons -->
+  <div style="display: flex; gap: 12px; font-size: 1.2rem;">
+    {% if config.Instagram %}<a href="{{ config.Instagram }}" style="color: #e1306c;"><i class="fab fa-instagram"></i></a>{% endif %}
+    {% if config.Facebook %}<a href="{{ config.Facebook }}" style="color: #3b5998;"><i class="fab fa-facebook"></i></a>{% endif %}
+    {% if config.Twitter %}<a href="{{ config.Twitter }}" style="color: #1da1f2;"><i class="fab fa-twitter"></i></a>{% endif %}
+    {% if config.github %}<a href="{{ config.github }}" style="color: #ccc;"><i class="fab fa-github"></i></a>{% endif %}
+    {% if config.Linkedin %}<a href="{{ config.Linkedin }}" style="color: #0077b5;"><i class="fab fa-linkedin"></i></a>{% endif %}
+  </div>
+
+  <!-- Contact Info -->
+  <div style="display: flex; align-items: center; gap: 15px;">
+    <a href="mailto:{{ config.EMAIL_SENDER }}" style="color: #87cefa; text-decoration: none;">
+      <i class="fas fa-envelope"></i> {{ config.EMAIL_SENDER }}
+    </a>
+    <span><i class="fas fa-phone"></i> {{ config.MOBILE_SENDER_NUMBER }}</span>
+  </div>
+
+</footer>

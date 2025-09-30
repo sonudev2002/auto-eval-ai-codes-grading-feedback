@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Assignment Page</title>
+    <style>
+:root {
+  --bg:#fff;--text:#000;--panel-bg:#f5f5f5;--border:#ccc;--accent:#007bff;
+}
+body.dark {--bg:#0b1220;--text:#e6eef8;--panel-bg:#0f1724;--border:#263445;--accent:#7c3aed;}
+body.light {--bg:#fff;--text:#000;--panel-bg:#f5f5f5;--border:#ccc;--accent:#007bff;}
+body.grey {--bg:#f8fafc;--text:#1e293b;--panel-bg:#ffffff;--border:#e2e8f0;--accent:#2563eb;}
+body.solarized {--bg:#002b36;--text:#93a1a1;--panel-bg:#073642;--border:#586e75;--accent:#b58900;}
+
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
+  background:var(--bg);color:var(--text);display:flex;flex-direction:column;height:100vh;}
+header{display:flex;align-items:center;gap:.8rem;padding:.6rem .8rem;border-bottom:1px solid var(--border);
+  background:var(--panel-bg);flex-wrap:wrap;}
+.assignment-info{font-weight:600;font-size:.95rem;min-width:220px;}
+
+button,select,input[type="date"],input[type="time"],input[type="number"],input[type="text"]{
+  padding:6px 8px;border-radius:6px;border:1px solid var(--border);
+  background:var(--panel-bg);color:var(--text);
+}
+.mode-toggle{display:flex;gap:6px;align-items:center;}
+.mode-toggle button.active,.tab.active{background:var(--accent);color:#fff;}
+.time-controls{display:flex;align-items:center;gap:6px;}
+.time-controls input[type="number"]{width:3.2rem;text-align:center;font-family:monospace;}
+
+.controls{display:flex;gap:8px;align-items:center;}
+main{flex:1;display:flex;overflow:hidden;}
+#infoPanel{padding:12px;width:50%;border-right:1px solid var(--border);background:var(--panel-bg);overflow:auto;display:flex;flex-direction:column;}
+#divider{width:6px;background:var(--border);cursor:col-resize;transition:background .2s;}
+#divider.active{background:var(--accent);}
+#editorPanel{flex:1;padding:12px;overflow:auto;display:flex;flex-direction:column;}
+
+.tabs{display:flex;gap:8px;margin-bottom:10px;}
+.tab{padding:6px 10px;border-radius:8px;cursor:pointer;border:1px solid var(--border);background:transparent;}
+.tabContent{display:none;}
+.tabContent.active{ display:flex; flex-direction:column; gap:8px; }
+
+/* responsive */
+@media(max-width:900px){
+  #infoPanel{width:100%;order:2;}
+  #editorPanel{order:3;}
+  #divider{display:none;}
+}
+
+/* Toolbar */
+.toolbar{display:flex;align-items:center;gap:.5rem;padding:8px;
+  border-bottom:1px solid var(--border);background:var(--panel-bg);justify-content:space-between;}
+.toolbar-main{display:flex;gap:.5rem;}
+.toolbar-left,.toolbar-actions{display:flex;align-items:center;gap:6px;}
+.toolbar-collapse{margin-left:auto;display:flex;align-items:center;gap:6px;}
+.hidden{display:none!important;}
+#collapseBtn{background:transparent;}
+
+.toolbar-collapsed{position:relative;}
+.collapsed-menu{position:absolute;top:100%;right:0;background:var(--panel-bg);border:1px solid var(--border);
+  border-radius:6px;padding:.5rem;display:flex;flex-direction:column;gap:.25rem;z-index:10;}
+
+/* Modal */
+.modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.4);z-index:1000;}
+.modal-content{background:var(--panel-bg);color:var(--text);padding:12px;border-radius:8px;
+  border:1px solid var(--border);width:320px;}
+.modal-content h3{margin:0 0 8px;}
+.modal-content label{display:block;margin:6px 0;font-size:.9rem;}
+
+/* fullscreen */
+body.fullscreen main{position:fixed;inset:0;background:var(--bg);z-index:1000;}
+body.fullscreen #infoPanel,body.fullscreen #divider{display:none;}
+
+/* Console / Output */
+#runControls { margin: 10px 0; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+#consolePanel{border:1px solid var(--border);border-radius:8px;padding:8px;background:var(--panel-bg);margin-top:8px;max-height:320px;overflow:auto;font-family:monospace;}
+#consolePanel pre{white-space:pre-wrap;margin:0;font-family:inherit;font-size:13px;}
+#stdinInput{width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);margin-top:8px;background:transparent;color:inherit}
+.status-badge{padding:4px 8px;border-radius:6px;border:1px solid var(--border);font-size:.85rem;}
+.small {font-size:.85rem;padding:4px 6px;border-radius:6px}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(0,0,0,0.15);border-left-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ===== better primary buttons ===== */
+#runBtn, #submitBtn {
+  --btn-bg: var(--accent);
+  --btn-fg: #fff;
+  --btn-radius: 8px;
+  padding: 8px 12px;
+  border-radius: var(--btn-radius);
+  border: 1px solid rgba(0,0,0,0.08);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--btn-bg) 92%, #0000) 0%, var(--btn-bg) 100%);
+  color: var(--btn-fg);
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: transform .08s ease, box-shadow .12s ease, opacity .12s ease;
+}
+
+/* hover / active */
+#runBtn:hover, #submitBtn:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,0.12); }
+#runBtn:active, #submitBtn:active { transform: translateY(0); }
+
+/* disabled state - still readable */
+#runBtn:disabled, #submitBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* contrast alternative for dark themes (optional) */
+body.dark #runBtn, body.dark #submitBtn {
+  filter: brightness(1.05);
+}
+
+/* ===== status badge improvements ===== */
+.status-badge {
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  min-width:54px;
+  justify-content:center;
+  font-weight:600;
+}
+
+/* small spinner inside badge - already exists, tighten size */
+.spinner{ width:12px; height:12px; border-width:2px; }
+
+/* hide text when empty */
+.status-badge.empty { border-color: transparent; background: transparent; padding:4px; min-width:0; }
+
+/* subtle "idle" hidden by default: keep for screen readers only */
+.status-badge.sr-only {
+  position: absolute !important;
+  width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
+}
+
+/* make the run controls' left grouping compact and avoid odd "gap:100vhpx" */
+#runControls > div:first-child { display:flex; gap:8px; align-items:center; }
+#closeCodeBtn:hover {
+  color: red;
+  transform: scale(1.2);
+}
+
+    </style>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  </head>
+  <body class="light">
+  <header>
+    <button  onclick="goHome()">🏠 Home</button>
+    <div class="assignment-info" data-assignment-id = "{{id}}">
+      Assignment #{{id}}: <strong>{{detail.title}}</strong> | Instructor: {{detail.instructor.full_name}} | Deadline: {{detail.due_date}}
+    </div>
+
+    <!-- Mode toggle -->
+    <div class="mode-toggle"><button id="modeToggle">Stopwatch</button></div>
+
+    <!-- Timer Controls -->
+    <div id="timerControls" class="controls">
+      <input type="number" id="hh" min="0" max="999" value="0">:
+      <input type="number" id="mm" min="0" max="59" value="10">:
+      <input type="number" id="ss" min="0" max="59" value="0">
+      <button id="timerStart">Start</button>
+      <button id="timerReset">Reset</button>
+      <button id="muteBtn">🔊</button>
+    </div>
+
+    <!-- Stopwatch Controls -->
+    <div id="stopwatchControls" class="controls" style="display:none">
+      <span id="swDisplay" style="font-family:monospace;min-width:86px;display:inline-block;text-align:center">00:00:00</span>
+      <button id="swStart">Start</button>
+      <button id="swReset">Reset</button>
+    </div>
+
+    <!-- Date/Time -->
+    <div class="controls" style="margin-left:auto">
+      <label>Date</label><span id="dateDisplay"></span>
+      <label style="margin-left:8px">Time</label><span id="timeDisplay"></span>
+    </div>
+
+    <!-- Theme -->
+    <div class="controls">
+      <label>Theme</label>
+      <select id="themeSel">
+        <option value="dark" selected>Dark</option>
+        <option value="light">Light</option>
+        <option value="grey">Grey</option>
+        <option value="solarized">Solarized</option>
+      </select>
+    </div>
+  </header>
+
+  <main>
+    <div id="infoPanel">
+      <div class="tabs" role="tablist" aria-label="Info Panel Tabs">
+        <div class="tab active" role="tab" aria-selected="true" tabindex="0" data-tab="t1">Info</div>
+        <div class="tab" role="tab" aria-selected="false" tabindex="-1" data-tab="t2">Past Submissions</div>
+        <div class="tab" role="tab" aria-selected="false" tabindex="-1" data-tab="t3">Console</div>
+      </div>
+
+      <div id="t1" class="tabContent active" style="display:flex; flex-direction:column; gap:12px">
+
+  <!-- First box -->
+  <div class="info-box" style="border:1px solid #ccc; padding:10px; border-radius:6px;">
+    <p>
+      <b>Difficulty:</b> {{ detail.difficulty.difficulty_types }} &nbsp;&nbsp;
+      <b>Marks:</b> {{ detail.difficulty.marks }} &nbsp;&nbsp;
+      <b>Repository:</b> {{ detail.repository.repository_id }}{{ detail.repository.repo_title }}
+    </p>
+  </div>
+
+  <!-- Second box -->
+  <div class="info-box" style="border:1px solid #ccc; padding:10px; border-radius:6px;">
+    <p><b>Description:</b></p>
+    <p>{{ detail.description }}</p>
+  </div>
+
+  <!-- Third box -->
+  <div class="info-box" style="border:1px solid #ccc; padding:10px; border-radius:6px;">
+    <p><b>Examples:</b></p>
+    {% if detail.examples %}
+      {% for ex in detail.examples %}
+        <div class="example-block" 
+     data-input="{{ ex.input }}" 
+     data-output="{{ ex.output }}">
+  <p><b>Example {{ loop.index }}</b></p>
+  <p><b>Input:</b> {{ ex.input }}</p>
+  <p><b>Output:</b> {{ ex.output }}</p>
+  <p><b>Explanation:</b> {{ ex.explanation }}</p>
+</div>
+
+      {% endfor %}
+    {% else %}
+      <p><em>No examples available.</em></p>
+    {% endif %}
+  </div>
+
+  <!-- Fourth box -->
+  <div class="info-box" style="border:1px solid #ccc; padding:10px; border-radius:6px;">
+    <p><b>Hint:</b></p>
+    <p>{{ detail.hint }}</p>
+  </div>
+
+</div>
+
+
+     <div id="t2" class="tabContent">
+  {% if detail.past_submissions %}
+    <table border="1" cellpadding="6" cellspacing="0">
+      <thead>
+        <tr>
+          <th>Submission ID</th>
+          <th>Submitted On</th>
+          <th>Language</th>
+          <th>Code Path</th>
+        </tr>
+      </thead>
+      <tbody>
+  {% for submission in detail.past_submissions %}
+    <tr>
+      <!-- Make submission_id clickable -->
+      <td>
+       <a href="/code_submission_report?submission_id={{ submission.submission_id }}">
+        {{ submission.submission_id }}
+      </a>
+
+
+      </td>
+
+      <td>{{ submission.submitted_on }}</td>
+      <td>{{ submission.language }}</td>
+
+      <!-- Make code_path a clickable button -->
+      <td>
+        <button class="view-code-btn" data-path="{{ submission.code_path }}">
+          View Code
+        </button>
+      </td>
+    </tr>
+  {% endfor %}
+</tbody>
+
+    </table>
+  {% else %}
+    <p><em>No past submissions yet.</em></p>
+  {% endif %}
+</div>
+
+      
+      <div id="t3" class="tabContent" style="flex-direction:column;gap:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <strong>Console Output</strong>
+          <!-- visually empty by default; aria-live so screen readers get updates -->
+          <span id="runStatusInfo" class="status-badge small empty" aria-live="polite" aria-atomic="true" role="status"></span>
+        </div>
+        <div id="outputContainerInInfo" style="margin-top:8px;border:1px solid var(--border);border-radius:6px;padding:8px;
+              background:var(--panel-bg);max-height:60vh;overflow:auto;font-family:monospace">
+          <pre id="outputPreInInfo" style="white-space:pre-wrap;margin:0;font-family:inherit;font-size:13px">Output will appear here. Press Run (or Ctrl+Enter).</pre>
+        </div>
+        <input id="stdinInInfo" placeholder="Optional STDIN (for Run). Press Enter to store." style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);margin-top:8px;background:transparent;color:inherit">
+      </div>
+    </div>
+
+    <div id="divider" title="Drag to resize"></div>
+
+    <div id="editorPanel">
+      <div id="editor" style="height:100%;width:100%;display:flex;flex-direction:column">
+        <!-- Toolbar -->
+        <div class="toolbar" style="flex:0 0 auto">
+          <!-- Full toolbar -->
+          <div class="toolbar-main">
+            <select id="langSel">
+              <option value="python">Python</option>
+              <option value="cpp">C++</option>
+              <option value="c">C</option>
+              <option value="java">Java</option>
+            </select>
+            <button id="fullscreenBtn" title="Toggle Fullscreen"><i data-lucide="maximize"></i></button>
+            <button id="clearBtn" title="Clear Editor"><i data-lucide="trash-2"></i></button>
+            <button id="formatBtn" title="Format Code"><i data-lucide="wand-2"></i></button>
+            <button id="settingsBtn" title="Editor Settings"><i data-lucide="settings"></i></button>
+            <button id="downloadBtn" title="Download Code"><i data-lucide="download"></i></button>
+          </div>
+          <!-- Collapsed toolbar -->
+          <div class="toolbar-collapsed hidden">
+            <button id="collapsedMenuBtn"><i data-lucide="chevrons-right"></i></button>
+            <div class="collapsed-menu hidden" id="collapsedMenu">
+              <button id="fullscreenBtnSmall">Fullscreen</button>
+              <button id="clearBtnSmall">Clear</button>
+              <button id="formatBtnSmall">Format</button>
+              <button id="settingsBtnSmall">Settings</button>
+              <button id="downloadBtnSmall">Download</button>
+            </div>
+          </div>
+          <div id="editorSettings" class="modal" style="display:none">
+          <div class="modal-content">
+            <h3>Editor Settings</h3>
+            <label>Font Size <input type="number" id="fontSizeInput" min="10" max="32"></label>
+            <label>Tab Size <input type="number" id="tabSizeInput" min="2" max="8"></label>
+            <label><input type="checkbox" id="wordWrapInput"> Word Wrap</label>
+            <button id="saveSettingsBtn">Save</button>
+          </div>
+        </div>
+
+        </div>
+
+        <!-- Editor container -->
+        <div id="monacoContainer" style="flex:1 1 auto;min-height:220px"></div>
+        
+        <!-- Run/Submit controls -->
+        <div id="runControls" style="flex:0 0 auto;display:flex;justify-content:space-between;align-items:center;">
+          <div style="display:flex;align-items:center;">
+            <button id="runBtn" type="button">Run</button>
+            <button id="submitBtn" type="button">Submit</button>
+            <!-- visually empty by default; aria-live for screen readers -->
+            <span id="runStatus" class="status-badge small empty" aria-live="polite" aria-atomic="true" role="status"></span>
+          </div>
+          <div style="font-size:0.85rem;color:var(--text);opacity:0.9">
+            Shortcuts: Ctrl/Cmd+Enter → Run · Ctrl/Cmd+Shift+S → Submit
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <!-- Feedback Modal -->
+<div id="feedbackModal" class="modal" style="display:none;">
+  <div class="modal-content">
+    <h3>Assignment Feedback</h3>
+    <label>Rate your satisfaction:</label>
+    <div id="starRating" style="font-size:24px;cursor:pointer;display:flex;flex-wrap:wrap;gap:4px;"></div>
+    <div style="margin-top:10px;text-align:right;">
+      <button id="skipFeedback">Skip</button>
+      <button id="submitFeedbackBtn">Submit Feedback</button>
+    </div>
+  </div>
+</div>
+
+
+  </main>
+ <!-- Code Viewer Modal -->
+<div id="codeModal" class="modal" style="display:none;">
+  <div class="modal-content" style="width:70%;max-width:800px;height:70%;overflow:auto;position:relative;">
+    
+    <!-- Cross (×) in top-right -->
+    <span id="closeCodeBtn" 
+          style="position:absolute;top:8px;right:12px;font-size:22px;
+                 font-weight:bold;cursor:pointer;color:var(--text);">
+      &times;
+    </span>
+
+    <h3 style="margin-top:0;">Code Preview</h3>
+    <pre id="codeContent" 
+         style="background:#111;color:#eee;padding:10px;border-radius:6px;
+                max-height:60vh;overflow:auto;white-space:pre-wrap;">
+    </pre>
+
+    <!-- ✅ New Download button -->
+    <div style="margin-top:10px;text-align:right;">
+      <button id="downloadPastBtn" style="padding:6px 12px; background:var(--accent); color:#fff; border:none; border-radius:4px; cursor:pointer;">
+        ⬇️ Download Code
+      </button>
+    </div>
+  </div>
+</div>
+
+
+
+   <!-- Monaco Editor Loader -->
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js"></script>
+<script>
+lucide.createIcons(); // render all <i data-lucide="...">
+
+document.addEventListener("DOMContentLoaded", () => {
+  // --- Helper ---
+  const $ = id => document.getElementById(id);
+  const pad = n => String(n).padStart(2,"0");
+  const beep = () => { try{const ctx=new (AudioContext||webkitAudioContext)(),o=ctx.createOscillator(),g=ctx.createGain();o.type="sine";o.frequency.value=880;g.gain.value=0.08;o.connect(g);g.connect(ctx.destination);o.start();setTimeout(()=>{o.stop();ctx.close()},600);}catch{} };
+
+  // Gather all example inputs into a list
+function getExamples() {
+  return Array.from(document.querySelectorAll(".example-block")).map(el => ({
+    input: (el.dataset.input || "").trim(),
+    output: (el.dataset.output || "").trim()
+  }));
+}
+
+
+  // --- Early Tabs handling (so tabs work even before Monaco loads) ---
+ function openTab(tabId){
+  // remove active from tab buttons
+  document.querySelectorAll(".tab").forEach(btn=>{
+    btn.classList.remove("active");
+    btn.setAttribute("aria-selected", "false");
+    btn.setAttribute("tabindex", "-1");
+  });
+
+  // hide all tab contents
+  document.querySelectorAll(".tabContent").forEach(c=>{
+    c.classList.remove("active");
+    // ensure no inline display leftover
+    c.style.display = "";
+  });
+
+  // set active button
+  const btn = document.querySelector(`.tab[data-tab="${tabId}"]`);
+  if(btn){
+    btn.classList.add("active");
+    btn.setAttribute("aria-selected", "true");
+    btn.setAttribute("tabindex", "0");
+    try{ btn.focus(); }catch{}
+  }
+
+  // set active content
+  const el = document.getElementById(tabId);
+  if(el){
+    el.classList.add("active");
+  } else {
+    console.warn("openTab: no element with id", tabId);
+  }
+}
+
+  document.querySelectorAll(".tab").forEach(t=>{
+    t.addEventListener("click", () => {
+      const id = t.getAttribute("data-tab");
+      openTab(id);
+    });
+    // optional keyboard navigation (left/right)
+    t.addEventListener("keydown", e=>{
+      if(e.key === "ArrowRight" || e.key === "ArrowLeft"){
+        const tabs = Array.from(document.querySelectorAll(".tab"));
+        const idx = tabs.indexOf(t);
+        let next = idx;
+        if(e.key === "ArrowRight") next = (idx + 1) % tabs.length;
+        else if(e.key === "ArrowLeft") next = (idx - 1 + tabs.length) % tabs.length;
+        tabs[next].click();
+        tabs[next].focus();
+      }
+    });
+  });
+
+  // --- Elements ---
+  const [hh,mm,ss,timerStart,timerReset,muteBtn] = ["hh","mm","ss","timerStart","timerReset","muteBtn"].map($);
+  const [swDisplay,swStart,swReset] = ["swDisplay","swStart","swReset"].map($);
+  const [modeToggleBtn,timerControls,swControls,themeSel] = ["modeToggle","timerControls","stopwatchControls","themeSel"].map($);
+
+  // --- Theme ---
+  const themeMap={dark:"vs-dark",light:"vs",grey:"vs",solarized:"vs-dark"};
+  const applyTheme = n => {
+    // remove only theme classes so other classes (fullscreen) are preserved
+    document.body.classList.remove("dark","light","grey","solarized");
+    document.body.classList.add(n);
+    themeSel.value = n;
+    window.monaco && monaco.editor.setTheme(themeMap[n]||"vs-dark");
+  };
+  applyTheme("dark"); themeSel.onchange=e=>applyTheme(e.target.value);
+
+  // --- Date/Time ---
+  setInterval(()=>{const d=new Date();$("dateDisplay").textContent=d.toISOString().slice(0,10);$("timeDisplay").textContent=`${pad(d.getHours())}:${pad(d.getMinutes())}`},1000);
+
+  // --- Timer ---
+  let timerInt=null, muted=false;
+  const clamp=(n,min,max)=>Math.max(min,Math.min(max,Number(n)||min));
+  const totalSecs=()=>clamp(hh.value,0,999)*3600+clamp(mm.value,0,59)*60+clamp(ss.value,0,59);
+  const setTime=t=>{t=Math.max(0,Math.floor(t));hh.value=Math.floor(t/3600);mm.value=Math.floor((t%3600)/60);ss.value=t%60};
+  const stopTimer=()=>{clearInterval(timerInt);timerInt=null;timerStart.textContent="Start"};
+  const tick=()=>{let t=totalSecs();t>0?setTime(t-1):(stopTimer(),!muted&&beep())};
+  timerStart.onclick=()=>{timerInt?stopTimer():(totalSecs()<=0&&setTime(600),timerInt=setInterval(tick,1000),timerStart.textContent="Pause")};
+  timerReset.onclick=()=>{stopTimer();setTime(600)};
+  [hh,mm,ss].forEach(inp=>{
+    inp.onfocus=stopTimer;
+    inp.oninput=()=>inp.value=clamp(inp.value,inp.min,inp.max);
+    inp.onwheel=e=>{e.preventDefault();let h=+hh.value,m=+mm.value,s=+ss.value,d=e.deltaY<0?1:-1;
+      if(inp===ss){s+=d;if(s>59){s=0;m++;if(m>59){m=0;h++}}else if(s<0){s=59;m--;if(m<0){m=59;h--}}}
+      else if(inp===mm){m+=d;if(m>59){m=0;h++}else if(m<0){m=59;h--}} else h+=d;
+      hh.value=h;mm.value=m;ss.value=s};
+    inp.onkeydown=e=>["ArrowUp","ArrowDown"].includes(e.key)&&inp.dispatchEvent(new WheelEvent("wheel",{deltaY:e.key==="ArrowUp"?-100:100}));
+  });
+  muteBtn.onclick=()=>{muted=!muted;muteBtn.textContent=muted?"🔇":"🔊"};
+
+  // --- Stopwatch ---
+  let swInt=null,swSecs=0; const render=()=>swDisplay.textContent=`${pad(swSecs/3600|0)}:${pad((swSecs%3600)/60|0)}:${pad(swSecs%60)}`;
+  const stopSW=()=>{clearInterval(swInt);swInt=null;swStart.textContent="Start"};
+  swStart.onclick=()=>{swInt?stopSW():(swInt=setInterval(()=>{swSecs++;render()},1000),swStart.textContent="Pause")};
+  swReset.onclick=()=>{stopSW();swSecs=0;render()};
+
+  // --- Mode Toggle ---
+  let mode = "stopwatch";
+  modeToggleBtn.textContent = "Stopwatch";
+  swControls.style.display = "flex";
+  timerControls.style.display = "none";
+  modeToggleBtn.onclick = () => {
+    stopTimer(); stopSW();
+    if(mode==="stopwatch"){ mode="timer"; modeToggleBtn.textContent="Timer"; timerControls.style.display="flex"; swControls.style.display="none"; }
+    else { mode="stopwatch"; modeToggleBtn.textContent="Stopwatch"; swControls.style.display="flex"; timerControls.style.display="none"; }
+  };
+
+  //--monaco editor --
+  require.config({paths:{vs:"https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs"}});
+require(["vs/editor/editor.main"], () => {
+  const $ = id => document.getElementById(id);
+
+  const editor = monaco.editor.create($("monacoContainer"), {
+    value: "# Write your Python code here\n",
+    language: "python",
+    theme: "vs-dark",
+    automaticLayout: true,
+    fontSize: 14,
+    tabSize: 4,
+    wordWrap: "on"
+  });
+  window.editorInstance = editor;
+
+  const [langSel, fsBtn, clrBtn, fmtBtn, dnBtn, setBtn] =
+        ["langSel","fullscreenBtn","clearBtn","formatBtn","downloadBtn","settingsBtn"].map($);
+  const [settingsModal, fsInput, tabInput, wrapChk, saveBtn] =
+        ["editorSettings","fontSizeInput","tabSizeInput","wordWrapInput","saveSettingsBtn"].map($);
+
+  // Run/Submit elements (pointed to Console tab elements)
+  const runBtn = $("runBtn");
+  const submitBtn = $("submitBtn");
+  const outputEl = $("outputPreInInfo");   // console in left panel (Console tab)
+  const stdinEl = $("stdinInInfo");
+  const runStatusInfo = $("runStatusInfo");
+  const runStatus = $("runStatus");
+
+  // Load saved settings
+  const saved = JSON.parse(localStorage.getItem("editorSettings") || "{}");
+  if(saved.fontSize){
+    editor.updateOptions({ fontSize: saved.fontSize, wordWrap: saved.wordWrap || "off" });
+    editor.getModel().updateOptions({ tabSize: saved.tabSize || 4 });
+  }
+
+  // Language selection
+  langSel.value = localStorage.getItem("preferredLang") || "python";
+  langSel.onchange = () => {
+    monaco.editor.setModelLanguage(editor.getModel(), langSel.value);
+    localStorage.setItem("preferredLang", langSel.value);
+  };
+
+  // Fullscreen toggle
+  fsBtn.onclick = () => { document.body.classList.toggle("fullscreen"); editor.layout(); };
+
+  // Clear editor
+  clrBtn.onclick = () => editor.setValue("");
+
+  // Format button using backend
+  fmtBtn.onclick = async () => {
+    const code = editor.getValue(), lang = langSel.value;
+    const url = lang==="python"?"/format/python":["cpp","c","java"].includes(lang)?"/format/cpp":null;
+    if(!url){ alert("No formatter for this language"); return; }
+    const res = await fetch(url,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({code})
+    });
+    const data = await res.json();
+    if(data.formatted) editor.setValue(data.formatted);
+    else alert(data.error || "Formatting failed");
+  };
+
+  // Download button
+  dnBtn.onclick = () => {
+    const code = editor.getValue();
+    const ext = {python:"py",cpp:"cpp",c:"c",java:"java",}[langSel.value]||"txt";
+    const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([code])); a.download=`code.${ext}`; a.click();
+  };
+
+  // Settings modal
+  setBtn.onclick = () => {
+    settingsModal.style.display = "block";
+    fsInput.value = editor.getOption(monaco.editor.EditorOption.fontSize);
+    tabInput.value = editor.getModel().getOptions().tabSize;
+    wrapChk.checked = editor.getOption(monaco.editor.EditorOption.wordWrap)!=="off";
+  };
+  saveBtn.onclick = () => {
+    const s = { fontSize:+fsInput.value||14, tabSize:+tabInput.value||4, wordWrap:wrapChk.checked?"on":"off" };
+    editor.updateOptions({ fontSize:s.fontSize, wordWrap:s.wordWrap });
+    editor.getModel().updateOptions({ tabSize:s.tabSize });
+    localStorage.setItem("editorSettings", JSON.stringify(s));
+    settingsModal.style.display = "none";
+  };
+  settingsModal.onclick = e => { if(e.target===settingsModal) settingsModal.style.display = "none"; };
+
+  // Ctrl + Mouse Wheel Zoom
+  editor.getDomNode().addEventListener("wheel", e => {
+    if(e.ctrlKey || e.metaKey){
+      e.preventDefault();
+      let fs = editor.getOption(monaco.editor.EditorOption.fontSize);
+      fs += (e.deltaY < 0 ? 1 : -1);
+      fs = Math.max(10, Math.min(40, fs));
+      editor.updateOptions({ fontSize: fs });
+      const s = JSON.parse(localStorage.getItem("editorSettings")||"{}");
+      s.fontSize = fs;
+      localStorage.setItem("editorSettings", JSON.stringify(s));
+    }
+  }, { passive: false });
+
+  // --- Run & Submit logic ---
+  let running = false;
+  let latestRunController = null;
+
+  // improved status helpers: show spinner optionally, hide when empty/idle
+  function setRunStateInfo(stateText, busy=false){
+    const el = document.getElementById("runStatusInfo");
+    if(!el) return;
+    if(!stateText || stateText.toLowerCase()==="idle"){
+      el.classList.add("empty");
+      el.innerHTML = "";
+      el.setAttribute("data-sr", "Idle");
+    } else {
+      el.classList.remove("empty");
+      if(busy){
+        el.innerHTML = `<span class="spinner" aria-hidden="true"></span> ${stateText}`;
+      } else {
+        el.textContent = stateText;
+      }
+    }
+  }
+  function setRunStateBottom(stateText, busy=false){
+    const el = document.getElementById("runStatus");
+    if(!el) return;
+    if(!stateText || stateText.toLowerCase()==="idle"){
+      el.classList.add("empty");
+      el.innerHTML = "";
+      el.setAttribute("data-sr", "Idle");
+    } else {
+      el.classList.remove("empty");
+      if(busy){
+        el.innerHTML = `<span class="spinner" aria-hidden="true"></span> ${stateText}`;
+      } else {
+        el.textContent = stateText;
+      }
+    }
+  }
+
+function getAssignmentId() {
+        const el = document.querySelector(".assignment-info");
+        return el ? el.dataset.assignmentId : null;
+      }
+
+  // safe display helper — auto-opens Console tab so user sees output immediately
+  function safeOut(txt){
+    outputEl.textContent = txt === null || txt === undefined ? String(txt) : String(txt);
+    const container = document.getElementById("outputContainerInInfo");
+    if(container) container.scrollTop = container.scrollHeight;
+    // open console tab automatically
+    openTab("t3");
+  }
+
+  async function runCode() {
+  if (running) return;
+  running = true;
+  setRunStateInfo("Running...", true);
+  setRunStateBottom("Running...", true);
+  runBtn.disabled = true;
+  submitBtn.disabled = true;
+  outputEl.textContent = "";
+
+  const code = editor.getValue();
+  const lang = langSel.value;
+
+  // Collect examples
+  const examples = getExamples();
+  if (examples.length === 0) {
+    safeOut("⚠ No examples found.");
+    running = false;
+    runBtn.disabled = false;
+    submitBtn.disabled = false;
+    return;
+  }
+
+  let results = [];
+
+  try {
+    // Send all example inputs at once
+    const inputs = examples.map(ex => ex.input);
+
+    const res = await fetch("/run", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ code, lang, inputs }),
+      credentials: "same-origin"
+    });
+
+    const data = await res.json().catch(() => null);
+
+    if (!data || !Array.isArray(data)) {
+      safeOut("❌ No valid response from server");
+    } else {
+      // Compare each output with expected
+      data.forEach((item, i) => {
+        const gotOutput = (item.stdout || "").trim();
+        const expected = (examples[i].output || "").trim();
+
+        if (gotOutput === expected) {
+          results.push(`Example ${i + 1}: ✅ Passed`);
+        } else {
+          results.push(
+            `Example ${i + 1}: ❌ Failed\nExpected: ${expected}\nGot: ${gotOutput}`
+          );
+        }
+      });
+
+      safeOut(results.join("\n\n"));
+    }
+  } catch (err) {
+    safeOut(`❌ Error running code: ${err.message}`);
+  }
+
+  setRunStateInfo("Finished");
+  setRunStateBottom("Finished");
+  running = false;
+  runBtn.disabled = false;
+  submitBtn.disabled = false;
+}
+
+
+  
+  
+async function submitCode() {
+  const code = editor.getValue();
+  const lang = langSel.value;
+  const assignmentId = getAssignmentId();
+
+  // Build hidden form so redirect works properly
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = "/submit-code";
+
+  const payload = { assignment_id: assignmentId, code, lang };
+  const input = document.createElement("input");
+  input.type = "hidden";
+  input.name = "payload";
+  input.value = JSON.stringify(payload);
+
+  form.appendChild(input);
+  document.body.appendChild(form);
+
+  form.submit();  // ✅ Browser will follow redirect → report page
+}
+
+
+
+
+  // Attach to UI
+runBtn.onclick = runCode;
+
+// ensure submitBtn exists (it does earlier as const submitBtn = $("submitBtn");)
+submitBtn.onclick = () => {
+  // open the feedback modal instead of submitting immediately
+  const modal = document.getElementById("feedbackModal");
+  if (!modal) {
+    // fallback: modal not present -> submit normally
+    submitCode();
+    return;
+  }
+  // ensure UI shows current selection (if any)
+  renderStars(selectedScore ?? 0);
+  modal.style.display = "flex";
+  // optionally focus first interactive element:
+  const firstRow = modal.querySelector(".feedback-row");
+  if (firstRow) firstRow.focus?.();
+};
+
+let selectedScore = null;
+
+// Render rating rows (your existing function)
+function renderStars(score = 0) {
+  const starDiv = document.getElementById("starRating");
+  if (!starDiv) return;
+  starDiv.innerHTML = "";
+
+  for (let i = 1; i <= 10; i++) {
+    const value = i * 0.5;
+
+    const row = document.createElement("div");
+    row.className = "feedback-row";
+    row.style.display = "flex";
+    row.style.alignItems = "center";
+    row.style.cursor = "pointer";
+    row.style.padding = "6px 10px";
+    row.style.borderRadius = "6px";
+    row.style.marginBottom = "4px";
+    row.tabIndex = 0; // make focusable for keyboard users
+
+    const star = document.createElement("span");
+    star.textContent = "★";
+    star.style.fontSize = "22px";
+    star.style.marginRight = "10px";
+    star.style.color = (score === value) ? "gold" : "#ccc";
+
+    const label = document.createElement("span");
+    label.textContent = `${value.toFixed(1)} / 5`;
+    label.style.fontWeight = (score === value) ? "600" : "400";
+    label.style.color = (score === value) ? "goldenrod" : "inherit";
+
+    row.onclick = () => {
+      selectedScore = value;
+      renderStars(value);
+    };
+    row.onkeydown = (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); row.click(); }
+    };
+
+    row.appendChild(star);
+    row.appendChild(label);
+    starDiv.appendChild(row);
+  }
+}
+renderStars(); // initial render
+
+// defensive bind for Skip & Submit Feedback buttons
+const skipBtn = document.getElementById("skipFeedback");
+if (skipBtn) {
+  skipBtn.addEventListener("click", () => {
+    document.getElementById("feedbackModal").style.display = "none";
+    submitCode(); // continue without feedback
+  });
+}
+
+const submitFeedbackBtn = document.getElementById("submitFeedbackBtn");
+if (submitFeedbackBtn) {
+  submitFeedbackBtn.addEventListener("click", () => {
+    const modal = document.getElementById("feedbackModal");
+    modal.style.display = "none";
+
+    // if you later add a textarea with id="feedbackComment", we'll grab it
+    const commentEl = document.getElementById("feedbackComment");
+    const comment = commentEl ? commentEl.value.trim() : "";
+
+    if (selectedScore !== null) {
+      localStorage.setItem(
+        "pendingFeedback",
+        JSON.stringify({ score: selectedScore, comment })
+      );
+    }
+    // Proceed to submit code (redirect to report page)
+    submitCode();
+  });
+}
+
+  // Keyboard shortcuts
+  window.addEventListener("keydown", (e) => {
+    if((e.ctrlKey || e.metaKey) && e.key === "Enter"){
+      e.preventDefault();
+      runCode();
+    }
+    if((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key.toLowerCase() === "s")){
+      e.preventDefault();
+      if(confirm("Submit this code now?")) submitCode();
+    }
+  });
+
+  // Enter to save stdin field (so pressing enter doesn't accidentally submit the page)
+  stdinEl.addEventListener("keydown", (e) => {
+    if(e.key === "Enter"){
+      e.preventDefault();
+      stdinEl.blur(); setTimeout(()=>stdinEl.focus(), 0);
+      safeOut((outputEl.textContent||"") + "\n[STDIN set]");
+    }
+  });
+
+  // Ctrl+S disabled for page (so user can save in editor)
+  window.addEventListener("keydown", (e) => {
+    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s"){
+      e.preventDefault();
+      localStorage.setItem("autosave_code", editor.getValue());
+      safeOut("Code autosaved locally.");
+    }
+  });
+
+  // restore autosave if present
+  const autosaved = localStorage.getItem("autosave_code");
+  if(autosaved && confirm("Restore autosaved code?")){
+    editor.setValue(autosaved);
+  }
+
+  // --- Toolbar Auto Collapse ---
+  function checkToolbar(){
+    const toolbar=document.querySelector(".toolbar"),main=document.querySelector(".toolbar-main"),collapsed=document.querySelector(".toolbar-collapsed");
+    if(main.scrollWidth>toolbar.clientWidth){main.classList.add("hidden");collapsed.classList.remove("hidden");}
+    else{main.classList.remove("hidden");collapsed.classList.add("hidden");}
+  }
+  $("collapsedMenuBtn").onclick=()=>$("collapsedMenu").classList.toggle("hidden");
+  window.addEventListener("resize",checkToolbar);
+  window.addEventListener("load",checkToolbar);
+});
+
+
+
+  // --- Resizable Panel ---
+  const divider=$("divider"),infoPanel=$("infoPanel"),main=document.querySelector("main");let drag=false;
+  divider.onmousedown=e=>(drag=true,document.body.style.cursor="col-resize",e.preventDefault());
+  document.onmousemove=e=>{if(!drag)return;const r=main.getBoundingClientRect();let w=e.clientX-r.left;w=Math.max(350,Math.min(w,r.width-500));infoPanel.style.width=w+"px";window.editorInstance?.layout()};
+  document.onmouseup=()=>{drag=false;document.body.style.cursor="default"};
+
+  // --- Toolbar Auto Collapse (global fallback) ---
+  function checkToolbarGlobal(){
+    const toolbar=document.querySelector(".toolbar"),main=document.querySelector(".toolbar-main"),collapsed=document.querySelector(".toolbar-collapsed");
+    if(!toolbar || !main || !collapsed) return;
+    if(main.scrollWidth>toolbar.clientWidth){main.classList.add("hidden");collapsed.classList.remove("hidden");}
+    else{main.classList.remove("hidden");collapsed.classList.add("hidden");}
+  }
+  window.addEventListener("resize",checkToolbarGlobal);
+  window.addEventListener("load",checkToolbarGlobal);
+
+// --- Past Submissions interactions ---
+let lastCodeContent = "";
+let lastPath = "";
+
+document.querySelectorAll(".view-code-btn").forEach(btn => {
+  btn.addEventListener("click", async () => {
+    const path = btn.dataset.path;
+    lastPath = path;
+
+    try {
+      const res = await fetch(`/view-code?path=${encodeURIComponent(path)}`);
+      if (!res.ok) throw new Error("Failed to load code");
+      const data = await res.json();
+
+      lastCodeContent = data.code || "No code found.";
+      document.getElementById("codeContent").textContent = lastCodeContent;
+      document.getElementById("codeModal").style.display = "flex";
+    } catch (err) {
+      alert("Error loading code: " + err.message);
+    }
+  });
+});
+
+// Download code handler
+document.getElementById("downloadPastBtn").addEventListener("click", () => {
+  if (!lastCodeContent) {
+    alert("No code loaded to download");
+    return;
+  }
+  const blob = new Blob([lastCodeContent], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const filename = lastPath.split(/[/\\]/).pop() || "submission.txt";
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+
+// Close modal
+document.getElementById("closeCodeBtn").addEventListener("click", () => {
+  document.getElementById("codeModal").style.display = "none";
+});
+document.getElementById("codeModal").addEventListener("click", (e) => {
+  if (e.target.id === "codeModal") document.getElementById("codeModal").style.display = "none";
+});
+
+
+});
+function goHome() {
+    const role = "{{ session['user']['role'] }}";  // ✅ now it's a string
+    if (role === "student") {
+      window.location.href = "/student_dashboard";
+    } else if (role === "instructor") {
+      window.location.href = "/instructor_dashboard";
+    } else if (role === "admin") {
+      window.location.href = "/admin_dashboard";
+    } else {
+      window.location.href = "/";
+    }
+  }
+</script>
+
+
+  </body>
+</html>

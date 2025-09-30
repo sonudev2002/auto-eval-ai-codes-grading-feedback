@@ -1,0 +1,215 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create Notification</title>
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body class="d-flex flex-column min-vh-100">
+   <header class="bg-dark text-white p-3 d-flex justify-content-between align-items-center">
+    <div>
+      <button class="btn btn-sm btn-outline-light me-2" onclick="history.back()">← Back</button>
+      <button class="btn btn-sm btn-outline-light" onclick="goHome()">🏠 Home</button>
+    </div>
+    <h4 class="m-0">Notification Control Panel</h4>
+    <div></div>
+  </header>
+<div class="container my-4">
+  <h2 class="text-center mb-4">Notification Management</h2>
+
+  <!-- Tabs -->
+  <ul class="nav nav-tabs" role="tablist">
+    <li class="nav-item">
+      <a class="nav-link active" data-bs-toggle="tab" href="#sendNotification" role="tab">Send Notification</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" data-bs-toggle="tab" href="#sendBroadcast" role="tab">Send Broadcast</a>
+    </li>
+  </ul>
+
+  <div class="tab-content pt-3">
+    <!-- Send Notification -->
+    <div class="tab-pane fade show active" id="sendNotification" role="tabpanel">
+      <div class="card shadow">
+        <div class="card-header bg-primary text-white">Targeted Notification</div>
+        <div class="card-body">
+          <form id="notificationForm">
+            <div class="mb-3">
+              <label for="recipients">Recipient Type</label>
+              <select id="recipients" name="recipients" class="form-select" required>
+                <option value="">-- Select --</option>
+                <option value="single">Single User (ID)</option>
+                <option value="group">Multiple Users (IDs comma-separated)</option>
+              </select>
+            </div>
+            <div class="mb-3" id="userIdField" style="display:none;">
+              <label>User ID</label>
+              <input type="number" name="user_id" class="form-control">
+            </div>
+            <div class="mb-3" id="userIdsField" style="display:none;">
+              <label>User IDs (comma-separated)</label>
+              <input type="text" name="user_ids" class="form-control" placeholder="e.g., 101,102,103">
+            </div>
+            <div class="mb-3">
+              <label>Channels</label><br>
+              <div class="form-check form-check-inline">
+                <input type="checkbox" name="channels" value="dashboard" class="form-check-input" checked>
+                <label class="form-check-label">Dashboard</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input type="checkbox" name="channels" value="email" class="form-check-input">
+                <label class="form-check-label">Email</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input type="checkbox" name="channels" value="sms" class="form-check-input">
+                <label class="form-check-label">SMS</label>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label>Subject</label>
+              <input type="text" name="subject" class="form-control" placeholder="Optional">
+            </div>
+            <div class="mb-3">
+              <label>Message</label>
+              <textarea name="message" class="form-control" rows="3" required></textarea>
+            </div>
+            <div class="text-end">
+              <button type="submit" class="btn btn-primary">Send Notification</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Send Broadcast -->
+    <div class="tab-pane fade" id="sendBroadcast" role="tabpanel">
+      <div class="card shadow">
+        <div class="card-header bg-success text-white">Broadcast Message</div>
+        <div class="card-body">
+          <form id="broadcastForm">
+            <div class="mb-3">
+              <label>Audience</label>
+              <select name="broadcast_type" class="form-select" required>
+                <option value="">-- Select --</option>
+                <option value="all_students">All Students</option>
+                <option value="all_instructors">All Instructors</option>
+                <option value="all_users">All Users</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label>Channels</label><br>
+              <div class="form-check form-check-inline">
+                <input type="checkbox" name="channels" value="dashboard" class="form-check-input" checked>
+                <label class="form-check-label">Dashboard</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input type="checkbox" name="channels" value="email" class="form-check-input">
+                <label class="form-check-label">Email</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input type="checkbox" name="channels" value="sms" class="form-check-input">
+                <label class="form-check-label">SMS</label>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label>Subject</label>
+              <input type="text" name="subject" class="form-control" placeholder="Optional">
+            </div>
+            <div class="mb-3">
+              <label>Message</label>
+              <textarea name="message" class="form-control" rows="3" required></textarea>
+            </div>
+            <div class="text-end">
+              <button type="submit" class="btn btn-success">Send Broadcast</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bootstrap Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+$(function(){
+  // Toggle recipient fields
+  $('#recipients').on('change', function(){
+    $('#userIdField').hide();
+    $('#userIdsField').hide();
+    if(this.value === 'single'){ $('#userIdField').show(); }
+    else if(this.value === 'group'){ $('#userIdsField').show(); }
+  });
+
+  // Notification form submit
+  $('#notificationForm').on('submit', async function(e){
+    e.preventDefault();
+    const data = {};
+    $(this).serializeArray().forEach(f=>{
+      if(f.name==="channels"){ 
+        data.channels = data.channels || []; 
+        data.channels.push(f.value); 
+      } else {
+        data[f.name] = f.value;
+      }
+    });
+    try{
+      const res = await fetch('/notifications/send',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(data)
+      });
+      const result = await res.json();
+      Swal.fire(result.status==='success'?'Success':'Error',
+                result.status==='success'?'Notification sent':'Failed: '+(result.error||'Unknown'),
+                result.status==='success'?'success':'error');
+      if(result.status==='success'){ this.reset(); }
+    }catch(err){ Swal.fire('Error','Request failed','error'); }
+  });
+
+  // Broadcast form submit
+  $('#broadcastForm').on('submit', async function(e){
+    e.preventDefault();
+    const data = {};
+    $(this).serializeArray().forEach(f=>{
+      if(f.name==="channels"){ 
+        data.channels = data.channels || []; 
+        data.channels.push(f.value); 
+      } else {
+        data[f.name] = f.value;
+      }
+    });
+    try{
+      const res = await fetch('/notifications/broadcast',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(data)
+      });
+      const result = await res.json();
+      Swal.fire(result.status==='success'?'Success':'Error',
+                result.status==='success'?'Broadcast sent':'Failed: '+(result.error||'Unknown'),
+                result.status==='success'?'success':'error');
+      if(result.status==='success'){ this.reset(); }
+    }catch(err){ Swal.fire('Error','Request failed','error'); }
+  });
+});
+function goHome() { window.location.href = "/admin_dashboard"; }
+</script>
+
+<footer class="bg-light text-center py-3 mt-auto">
+  <div>{% include 'partials/footer.html' %}</div>
+</footer>
+</body>
+</html>
+
+
+
+
+
+

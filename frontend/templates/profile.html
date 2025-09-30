@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Profile Page</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        background-color: #f8f9fa;
+      }
+      .assignment-box {
+        display: inline-block;
+        padding: 6px 10px;
+        margin: 3px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        background: #f1f3f5;
+        font-size: 0.85rem;
+      }
+      .popup-message {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        min-width: 280px;
+        z-index: 1050;
+      }
+      .profile-picture img {
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid #0d6efd;
+        margin-bottom: 15px;
+      }
+      h6.text-muted {
+        font-weight: bold;
+        margin-top: 15px;
+      }
+      .readonly-note {
+        font-size: 0.9rem;
+        color: #6c757d;
+        font-style: italic;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Header -->
+    <header class="bg-dark text-white p-3 d-flex justify-content-between align-items-center">
+      <div>
+        <button class="btn btn-sm btn-outline-light me-2" onclick="history.back()">← Back</button>
+        <button class="btn btn-sm btn-outline-light" onclick="goHome()">🏠 Home</button>
+      </div>
+      <h4 class="m-0">{{ user.role|capitalize }} Profile</h4>
+      <div></div>
+    </header>
+
+    <!-- Flash Messages -->
+    <div class="container mt-3">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+          <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show popup-message">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+    </div>
+
+    <div class="container-fluid mt-4">
+      <div class="row">
+        {% if user.role != 'admin' %}
+        <!-- Left Panel -->
+        <div class="col-md-3 mb-4">
+          <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+              {% if user.role == 'student' %}Completed Assignments{% else %}Assignments Managed{% endif %}
+            </div>
+            <div class="card-body">
+              {% for level, assignments in completed_assignments.items() %}
+              <h6>{{ level }}</h6>
+              <div>
+                {% for a in assignments %}
+                  {% if user.role == 'student' %}
+                    <span class="assignment-box">{{ a.assignment_id }}</span>
+                  {% else %}
+                    <span class="assignment-box">{{ a.assignment_id }} ({{ a.distinct_students }} students)</span>
+                  {% endif %}
+                {% endfor %}
+              </div>
+              {% if not loop.last %}<hr />{% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Middle Panel -->
+        <div class="{% if user.role == 'admin' %}col-md-12{% else %}col-md-6{% endif %} mb-4">
+          <div class="card shadow-sm">
+            <div class="card-header bg-success text-white">Profile Management</div>
+            <div class="card-body text-center">
+              <!-- Profile Picture -->
+              <div class="profile-picture mb-3">
+                {% set pic_path = (user.profile_picture_path|string if user and user.profile_picture_path else "") %}
+                {% if pic_path %}
+                  <img src="{{ url_for('uploaded_file', filename=pic_path.replace('\\','/').split('/')[-1]) }}"
+                       alt="Profile Picture"
+                       onerror="this.onerror=null;this.src='{{ url_for('static', filename='images/default_avatar.png') }}';" />
+                {% else %}
+                  <img src="{{ url_for('static', filename='images/default_avatar.png') }}" alt="Default Avatar" />
+                {% endif %}
+              </div>
+
+              <!-- Profile Picture Form -->
+              {% if session['user']['user_id'] == user.user_id %}
+              <form method="POST" action="{{ url_for('profile.update_picture', user_id=user.user_id) }}" enctype="multipart/form-data" class="mb-4" onsubmit="return validateUpload(event)">
+                <input type="hidden" name="role" value="{{ request.args.get('role', user.role) }}">
+                <div class="d-flex justify-content-center gap-2">
+                  <input type="file" id="profilePicInput" name="profile_picture" class="form-control form-control-sm" />
+                  <button type="submit" name="action" value="upload" class="btn btn-sm btn-outline-primary">Upload</button>
+                  <button type="submit" name="delete_picture" value="1" class="btn btn-sm btn-outline-danger">Delete</button>
+                </div>
+              </form>
+              {% else %}
+                <p class="readonly-note">Read-only mode: Admins cannot update other users’ pictures</p>
+              {% endif %}
+
+              <hr />
+
+              <!-- Profile Info Form -->
+              <form method="POST" action="{{ url_for('profile.update_info', user_id=user.user_id) }}">
+                <input type="hidden" name="role" value="{{ request.args.get('role', user.role) }}">
+                <h6 class="text-muted">👤 Identity (User id: {{ user.user_id }})</h6>
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label>Email</label>
+                    <input type="email" class="form-control" name="email" value="{{ user.email }}"
+                           {% if session['user']['user_id'] != user.user_id %}disabled{% endif %}/>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label>Mobile</label>
+                    <input type="text" class="form-control" name="mobile_number" value="{{ user.mobile_number }}"
+                           {% if session['user']['user_id'] != user.user_id %}disabled{% endif %}/>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-md-4 mb-3">
+                    <label>First Name</label>
+                    <input type="text" class="form-control" name="first_name" value="{{ user.first_name }}"
+                           {% if session['user']['user_id'] != user.user_id %}disabled{% endif %}/>
+                  </div>
+                  <div class="col-md-4 mb-3">
+                    <label>Middle Name</label>
+                    <input type="text" class="form-control" name="middle_name" value="{{ user.middle_name }}"
+                           {% if session['user']['user_id'] != user.user_id %}disabled{% endif %}/>
+                  </div>
+                  <div class="col-md-4 mb-3">
+                    <label>Last Name</label>
+                    <input type="text" class="form-control" name="last_name" value="{{ user.last_name }}"
+                           {% if session['user']['user_id'] != user.user_id %}disabled{% endif %}/>
+                  </div>
+                </div>
+
+                <h6 class="text-muted">🏠 Address</h6>
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label>Country</label>
+                    <input type="text" class="form-control" name="country_name" value="{{ profile.country_name }}"
+                           {% if session['user']['user_id'] != user.user_id %}disabled{% endif %}/>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label>State</label>
+                    <input type="text" class="form-control" name="state_name" value="{{ profile.state_name }}"
+                           {% if session['user']['user_id'] != user.user_id %}disabled{% endif %}/>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label>District</label>
+                    <input type="text" class="form-control" name="district_name" value="{{ profile.district_name }}"
+                           {% if session['user']['user_id'] != user.user_id %}disabled{% endif %}/>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label>Pincode</label>
+                    <input type="text" class="form-control" name="pincode" value="{{ profile.pincode }}"
+                           {% if session['user']['user_id'] != user.user_id %}disabled{% endif %}/>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label>Local Address</label>
+                  <textarea class="form-control" name="local_address" rows="2"
+                            {% if session['user']['user_id'] != user.user_id %}disabled{% endif %}>{{ profile.local_address }}</textarea>
+                </div>
+
+                {% if session['user']['user_id'] == user.user_id %}
+                <div class="text-end">
+                  <button type="submit" class="btn btn-success">💾 Save Info</button>
+                </div>
+                {% else %}
+                  <p class="readonly-note">Read-only mode: Admins cannot update other users’ info</p>
+                {% endif %}
+              </form>
+
+              <hr />
+
+              <!-- Password Form -->
+              {% if session['user']['user_id'] == user.user_id %}
+              <form method="POST" action="{{ url_for('profile.update_password', user_id=user.user_id) }}">
+                <input type="hidden" name="role" value="{{ request.args.get('role', user.role) }}">
+                <h6 class="text-muted">🔒 Change Password</h6>
+                <div class="mb-3">
+                  <label>Current Password <span class="text-danger">*</span></label>
+                  <input type="password" class="form-control" id="currentPassword" name="current_password" required />
+                </div>
+                <div class="mb-3">
+                  <label>New Password</label>
+                  <input type="password" class="form-control" id="newPassword" name="password" required />
+                </div>
+                <div class="mb-3">
+                  <label>Confirm New Password</label>
+                  <input type="password" class="form-control" id="confirmPassword" name="confirm_password" required />
+                  <small id="passwordHelp" class="text-danger d-none">Passwords do not match</small>
+                  <small id="passwordSuccess" class="text-success d-none">Passwords match ✔</small>
+                </div>
+                <div class="text-end">
+                  <button type="submit" id="savePasswordBtn" class="btn btn-warning" disabled>🔑 Update Password</button>
+                </div>
+              </form>
+              {% else %}
+                <p class="readonly-note">Read-only mode: Admins cannot change other users’ password</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Panel -->
+        {% if user.role != 'admin' %}
+        <div class="col-md-3 mb-4">
+          <div class="card shadow-sm">
+            <div class="card-header bg-info text-white">
+              {% if user.role == 'student' %}Performance Report{% else %}Instructor Analytics{% endif %}
+            </div>
+            <div class="card-body">
+              {% if user.role == 'student' %}
+                <p><strong>Average Score:</strong> {{ report.average_score }}%</p>
+                <p><strong>Completion Rate:</strong> {{ report.completion_rate }}%</p>
+                <p><strong>Pass Rate:</strong> {{ report.pass_rate }}%</p>
+                <p><strong>Plagiarism Incidents:</strong> {{ report.plagiarism_incidents }}</p>
+                <p><strong>Performance Band:</strong> {{ report.performance_band }}</p>
+                <p><strong>Total Assignments:</strong> {{ report.total_assignments }}</p>
+                <canvas id="difficultyChart"></canvas>
+              {% else %}
+                <p><strong>Total Assignments Created:</strong> {{ report.total_assignments_created }}</p>
+                <p><strong>Total Submissions Received:</strong> {{ report.total_submissions }}</p>
+                <p><strong>Overall Avg Score:</strong> {{ report.overall_avg_score }}%</p>
+                <p><strong>Average Pass Rate:</strong> {{ report.avg_pass_rate }}%</p>
+                <p><strong>Plagiarism Rate:</strong> {{ report.plagiarism_rate }}%</p>
+                <p><strong>Feedback Score (Avg):</strong> {{ report.feedback_avg }}%</p>
+                <p><strong>Responsiveness Score:</strong> {{ report.responsiveness_score }}%</p>
+                <p><strong>Consistency Score:</strong> {{ report.consistency_score }}%</p>
+                <canvas id="difficultyChart"></canvas>
+              {% endif %}
+
+              <!-- 📊 Grade Distribution -->
+              <hr />
+              <h6 class="text-muted">📊 Grade Distribution</h6>
+              <canvas id="gradeDistChart"></canvas>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+      function goHome() {
+        const role = "{{ user.role }}";
+        if (role === "student") {
+          window.location.href = "/student_dashboard";
+        } else if (role === "instructor") {
+          window.location.href = "/instructor_dashboard";
+        } else if (role === "admin") {
+          window.location.href = "/admin_dashboard";
+        } else {
+          window.location.href = "/";
+        }
+      }
+
+      function validateUpload(event) {
+        const clickedButton = event.submitter;
+        if (clickedButton && clickedButton.name === "delete_picture") return true;
+        const fileInput = document.getElementById("profilePicInput");
+        const file = fileInput.files[0];
+        if (!file) { alert("Please select a picture before uploading."); return false; }
+        const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
+        if (!allowedTypes.includes(file.type)) { alert("Invalid file type. Only JPG, PNG, and GIF are allowed."); return false; }
+        const maxSize = 2 * 1024 * 1024;
+        if (file.size > maxSize) { alert("File is too large. Maximum size is 2 MB."); return false; }
+        return true;
+      }
+
+      // Password validation
+      const newPassword = document.getElementById("newPassword");
+      const confirmPassword = document.getElementById("confirmPassword");
+      const currentPassword = document.getElementById("currentPassword");
+      const savePasswordBtn = document.getElementById("savePasswordBtn");
+      const passwordHelp = document.getElementById("passwordHelp");
+      const passwordSuccess = document.getElementById("passwordSuccess");
+
+      function validatePasswords() {
+        const newVal = newPassword.value.trim();
+        const confirmVal = confirmPassword.value.trim();
+        const currentVal = currentPassword.value.trim();
+        if (!newVal && !confirmVal) { savePasswordBtn.disabled = true; passwordHelp.classList.add("d-none"); passwordSuccess.classList.add("d-none"); return; }
+        if (newVal !== confirmVal) { savePasswordBtn.disabled = true; passwordHelp.textContent = "Passwords do not match."; passwordHelp.classList.remove("d-none"); passwordSuccess.classList.add("d-none"); return; }
+        if (!currentVal) { savePasswordBtn.disabled = true; passwordHelp.textContent = "Current password is required."; passwordHelp.classList.remove("d-none"); passwordSuccess.classList.add("d-none"); return; }
+        savePasswordBtn.disabled = false; passwordHelp.classList.add("d-none"); passwordSuccess.classList.remove("d-none");
+      }
+
+      [newPassword, confirmPassword, currentPassword].forEach(input => input.addEventListener("input", validatePasswords));
+
+      // Difficulty Chart (existing)
+      {% if user.role != 'admin' %}
+      const ctx = document.getElementById("difficultyChart");
+      {% if user.role == 'student' %}
+        new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: {{ report.difficulty_labels|safe }},
+            datasets: [
+              { label: "Assignment Count", data: {{ report.assignment_counts|safe }}, backgroundColor:"rgba(54,162,235,0.6)" },
+              { label: "Average Score (%)", data: {{ report.avg_scores|safe }}, backgroundColor:"rgba(75,192,192,0.6)" },
+              { label: "Pass Rate (%)", data: {{ report.pass_rates|safe }}, backgroundColor:"rgba(255,206,86,0.6)" }
+            ]
+          },
+          options: { responsive:true, plugins:{ legend:{ position:"top" }, title:{ display:true, text:"Performance by Difficulty Level" } }, scales:{ y:{ beginAtZero:true } } }
+        });
+      {% else %}
+        new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: {{ report.difficulty_labels|safe }},
+            datasets: [
+              { label: "Assignment Count", data: {{ report.assignment_counts|safe }}, backgroundColor:"rgba(54,162,235,0.6)" },
+              { label: "Average Score (%)", data: {{ report.avg_scores|safe }}, backgroundColor:"rgba(75,192,192,0.6)" },
+              { label: "Pass Rate (%)", data: {{ report.pass_rates|safe }}, backgroundColor:"rgba(255,206,86,0.6)" },
+              { label: "Feedback Score (%)", data: {{ report.feedback_scores|safe }}, backgroundColor:"rgba(153,102,255,0.6)" }
+            ]
+          },
+          options: { responsive:true, plugins:{ legend:{ position:"top" }, title:{ display:true, text:"Instructor Analytics by Difficulty Level" } }, scales:{ y:{ beginAtZero:true } } }
+        });
+      {% endif %}
+      {% endif %}
+
+      // Grade Distribution Chart
+      document.addEventListener("DOMContentLoaded", () => {
+        const userId = {{ user.user_id }};
+        fetch(`/api/analytics/grades/profile/${userId}`)
+          .then(res => res.json())
+          .then(res => {
+            if (res.status === "success") {
+              renderGradeChart(res.data);
+            }
+          })
+          .catch(err => console.error("Grade fetch failed:", err));
+      });
+
+      function renderGradeChart(data) {
+        const ctx = document.getElementById("gradeDistChart");
+        if (!ctx) return;
+
+        new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: Object.keys(data),
+            datasets: [{
+              label: "Grades",
+              data: Object.values(data),
+              backgroundColor: ['#4caf50','#2196f3','#ffeb3b','#ff9800','#f44336','#9c27b0']
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { display: false }, title: { display: true, text: "Grade Distribution" } },
+            scales: { y: { beginAtZero: true } }
+          }
+        });
+      }
+    </script>
+  </body>
+</html>

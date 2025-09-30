@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Report an Issue</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container mt-5">
+
+  <h2>Issues</h2>
+
+  <!-- Tabs -->
+  <ul class="nav nav-tabs" id="issueTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="status-tab" data-bs-toggle="tab" data-bs-target="#status" type="button" role="tab">My Issues</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="report-tab" data-bs-toggle="tab" data-bs-target="#report" type="button" role="tab">Report New Issue</button>
+    </li>
+  </ul>
+
+  <!-- Tab Content -->
+  <div class="tab-content mt-3" id="issueTabsContent">
+    
+    <!-- My Issues Tab -->
+    <div class="tab-pane fade show active" id="status" role="tabpanel" aria-labelledby="status-tab">
+      <h4>My Reported Issues</h4>
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Status</th>
+            <th>Reported At</th>
+            <th>Attachments</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for issue in issues %}
+            <tr>
+              <td>{{ issue.issue_id }}</td>
+              <td>{{ issue.issue_type }}</td>
+              <td>{{ issue.description }}</td>
+              <td>
+                {% if issue.status == "open" %}
+                  <span class="badge bg-warning text-dark">Open</span>
+                {% else %}
+                  <span class="badge bg-success">Resolved</span>
+                {% endif %}
+              </td>
+              <td>{{ issue.reported_at }}</td>
+              <td>
+                <button class="btn btn-sm btn-info" onclick="showScreenshots({{ issue.issue_id }})">
+                  View Attachments
+                </button>
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="6" class="text-center">No issues reported yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Report Issue Tab -->
+    <div class="tab-pane fade" id="report" role="tabpanel" aria-labelledby="report-tab">
+      <h4>Report a New Issue</h4>
+      <form action="{{ url_for('submit_issue') }}" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="user_id" value="{{ user_id }}">
+        <input type="hidden" name="page" value="{{ page }}">
+
+        <div class="mb-3">
+          <label class="form-label">Issue Type</label>
+          <select class="form-control" name="issue_type" required>
+            <option value="" disabled selected>Select Issue Type</option>
+            <optgroup label="Authentication & Access">
+              <option value="Login Problem">Login Problem</option>
+              <option value="OTP/Verification Issue">OTP/Verification Issue</option>
+              <option value="Session Timeout">Session Timeout</option>
+            </optgroup>
+            <optgroup label="Profile & Account Management">
+              <option value="Profile Update Error">Profile Update Error</option>
+              <option value="Role Access Issue">Role Access Issue</option>
+              <option value="Wrong Profile Data">Wrong Profile Data</option>
+            </optgroup>
+            <optgroup label="Assignments & Submissions">
+              <option value="Assignment Not Visible">Assignment Not Visible</option>
+              <option value="Submission Error">Submission Error</option>
+              <option value="Submission Not Recorded">Submission Not Recorded</option>
+              <option value="Late Submission Error">Late Submission Error</option>
+            </optgroup>
+            <optgroup label="Evaluation & Feedback">
+              <option value="Incorrect Grades">Incorrect Grades</option>
+              <option value="Auto-Evaluation Error">Auto-Evaluation Error</option>
+              <option value="Feedback Missing">Feedback Missing</option>
+              <option value="Plagiarism Report Issue">Plagiarism Report Issue</option>
+            </optgroup>
+            <optgroup label="System & Technical">
+              <option value="UI Problem">UI Problem</option>
+              <option value="File Upload/Download Issue">File Upload/Download Issue</option>
+              <option value="Slow Performance">Slow Performance</option>
+              <option value="System Crash/Bug">System Crash/Bug</option>
+            </optgroup>
+            <optgroup label="General & Communication">
+              <option value="Notification Issue">Notification Issue</option>
+              <option value="Data Error">Data Error</option>
+              <option value="Other">Other</option>
+            </optgroup>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Description</label>
+          <textarea class="form-control" name="description" rows="4" required></textarea>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Attach Screenshots (optional)</label>
+          <input type="file" class="form-control" name="screenshots" accept=".png,.jpg,.jpeg,.gif" multiple>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Submit Issue</button>
+      </form>
+    </div>
+
+  </div>
+
+  <!-- Screenshot Modal -->
+  <div class="modal fade" id="screenshotModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Issue Attachments</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body text-center">
+          <!-- Thumbnails -->
+          <div id="screenshotContainer"></div>
+
+          <!-- Carousel -->
+          <div id="screenshotCarousel" class="carousel slide" data-bs-ride="carousel" style="display:none;">
+            <div class="carousel-inner" id="carouselInner"></div>
+            <button class="carousel-control-prev" type="button" data-bs-target="#screenshotCarousel" data-bs-slide="prev">
+              <span class="carousel-control-prev-icon"></span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#screenshotCarousel" data-bs-slide="next">
+              <span class="carousel-control-next-icon"></span>
+            </button>
+            <button class="btn btn-secondary mt-3" onclick="closeCarousel()">← Back</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    function showScreenshots(issueId) {
+      fetch(`/issue/${issueId}/screenshots`)
+        .then(res => res.json())
+        .then(data => {
+          let container = document.getElementById("screenshotContainer");
+          let carousel = document.getElementById("screenshotCarousel");
+          let carouselInner = document.getElementById("carouselInner");
+
+          container.style.display = "block";
+          carousel.style.display = "none";
+          container.innerHTML = "";
+          carouselInner.innerHTML = "";
+
+          if (data.screenshots.length === 0) {
+            container.innerHTML = "<p class='text-muted'>No attachments</p>";
+          } else {
+            data.screenshots.forEach((sc, index) => {
+              // Thumbnails
+              container.innerHTML += `
+                <img src="/${sc}" class="img-thumbnail m-2" 
+                     style="max-width:200px; cursor:pointer;" 
+                     onclick="openCarousel(${index})">
+              `;
+              // Carousel items
+              carouselInner.innerHTML += `
+                <div class="carousel-item ${index === 0 ? 'active' : ''}">
+                  <img src="/${sc}" class="d-block w-100" style="max-height:80vh;object-fit:contain;">
+                </div>
+              `;
+            });
+          }
+          new bootstrap.Modal(document.getElementById("screenshotModal")).show();
+        });
+    }
+
+    function openCarousel(startIndex) {
+      document.getElementById("screenshotContainer").style.display = "none";
+      let carousel = document.getElementById("screenshotCarousel");
+      let items = carousel.querySelectorAll(".carousel-item");
+
+      carousel.style.display = "block";
+
+      items.forEach((item, i) => {
+        item.classList.remove("active");
+        if (i === startIndex) {
+          item.classList.add("active");
+        }
+      });
+    }
+
+    function closeCarousel() {
+      document.getElementById("screenshotContainer").style.display = "block";
+      document.getElementById("screenshotCarousel").style.display = "none";
+    }
+  </script>
+</body>
+</html>

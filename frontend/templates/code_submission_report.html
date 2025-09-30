@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Submission / Testcase Results</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--muted:#94a3b8;--accent:#06b6d4;--ok:#10b981;--bad:#ef4444}
+    *{box-sizing:border-box;font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial}
+    body{margin:0;background:linear-gradient(180deg,#071127 0%, #081225 100%);color:#e6eef6}
+    .container{max-width:1200px;margin:28px auto;padding:18px}
+    .header{display:flex;gap:12px;align-items:center;background:rgba(255,255,255,0.02);padding:12px;border-radius:10px}
+    .btn{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted);padding:8px 12px;border-radius:8px;cursor:pointer}
+    .title{margin-left:auto;display:flex;gap:10px;align-items:center}
+    .meta{background:rgba(255,255,255,0.02);padding:6px 10px;border-radius:8px;color:var(--muted);font-weight:600}
+    .main{display:grid;grid-template-columns:360px 1fr;gap:16px;margin-top:16px}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:14px;border-radius:10px;border:1px solid rgba(255,255,255,0.02)}
+    h3{margin:0 0 10px 0;color:#dff3fb}
+    .left .table{margin-bottom:12px}
+    .k{color:var(--muted);font-size:13px}
+    .v{color:#dbeafe;font-weight:700}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px;text-align:left;border-bottom:1px dashed rgba(255,255,255,0.03);font-size:13px}
+    .small{font-size:12px;color:var(--muted)}
+    .tcTable th{background:rgba(255,255,255,0.03);font-weight:600}
+    .status-pass{color:var(--ok);font-weight:700}
+    .status-fail{color:var(--bad);font-weight:700}
+    @media(max-width:880px){.main{grid-template-columns:1fr;}.title{margin-left:0}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header card">
+      <button class="btn" onclick="history.back()">← Back</button>
+      <button class="btn" onclick="goHome()">🏠 Home</button>
+
+      <div class="title">
+        <div class="meta">Submission ID: {{ result.submission.submission_id if result.submission else "N/A" }}</div>
+        <div class="meta">Question: {{ result.submission.question_title if result.submission else "N/A" }}</div>
+      </div>
+    </div>
+
+    {% if result.status == "error" %}
+      <div class="card" style="margin-top:16px;">
+        <p style="color:var(--bad);">{{ result.message }}</p>
+      </div>
+    {% else %}
+    <div class="main">
+      <div class="left">
+        <div class="card table">
+          <h3>Submission Details</h3>
+          <table>
+            <tr><th class="k">Assignment ID</th><td class="v">{{ result.submission.assignment_id if result.submission else "N/A" }}</td></tr>
+            <tr><th class="k">User ID</th><td class="v">{{ result.submission.user_id if result.submission else "N/A" }}</td></tr>
+            <tr><th class="k">Language</th><td class="v">{{ result.submission.language if result.submission else "N/A" }}</td></tr>
+            <tr><th class="k">Submitted On</th><td class="v">{{ result.submission.submitted_on if result.submission else "N/A" }}</td></tr>
+          </table>
+        </div>
+
+        <div class="card table">
+          <h3>Smart Analysis</h3>
+          <table>
+            <tr><th class="k">Score</th><td class="v">{{ result.analysis.score if result.analysis else "N/A" }}</td></tr>
+            <tr><th class="k">Grade</th><td class="v">{{ result.analysis.grade if result.analysis else "N/A" }}</td></tr>
+            <tr><th class="k">Plagiarism</th><td class="v">{{ result.analysis.plagiarism_score if result.analysis else "N/A" }}%</td></tr>
+            <tr><th class="k">Syntax Error</th><td class="v">{{ "Yes" if result.analysis.has_syntax_error else "No" }}</td></tr>
+            <tr><th class="k">Code Quality</th><td class="v">{{ result.analysis.code_quality_score if result.analysis else "N/A" }}</td></tr>
+            <tr><th class="k">Code Length</th><td class="v">{{ result.analysis.code_length if result.analysis else "N/A" }}</td></tr>
+            <tr><th class="k">Cyclomatic Complexity</th><td class="v">{{ result.analysis.cyclomatic_complexity if result.analysis else "N/A" }}</td></tr>
+            <tr><th class="k">Total Testcases</th><td class="v">{{ result.analysis.total_testcases if result.analysis else "N/A" }}</td></tr>
+            <tr><th class="k">Passed</th><td class="v">{{ result.analysis.passed_testcases if result.analysis else "N/A" }}</td></tr>
+            <tr><th class="k">Failed</th><td class="v">{{ result.analysis.failed_testcases if result.analysis else "N/A" }}</td></tr>
+            <tr><th class="k">Avg Execution Time</th><td class="v">{{ result.analysis.average_execution_time if result.analysis else "N/A" }}</td></tr>
+            <tr><th class="k">Memory Usage</th><td class="v">{{ result.analysis.memory_usage if result.analysis else "N/A" }}</td></tr>
+          </table>
+        </div>
+
+        <div class="card table">
+          <h3>Feedback / Suggestion</h3>
+          <div class="small">
+            {{ result.feedback_html | safe if result.feedback_html else "No feedback provided." }}
+          </div>
+        </div>
+
+        <div class="card table">
+          <h3>Plagiarism Report</h3>
+          {% if result.plagiarism and result.plagiarism|length > 0 %}
+          <table>
+            <thead><tr><th>Matched Submission ID</th><th>Similarity %</th></tr></thead>
+            <tbody>
+              {% for match in result.plagiarism %}
+                <tr><td>{{ match.matched_submission_id }}</td><td>{{ match.plagiarism_score }}%</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+            <p class="small">No plagiarism matches found.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="right card">
+        <h3>Testcase Results</h3>
+        <div style="margin-top:12px;overflow:auto">
+          {% if result.testcases and result.testcases|length > 0 %}
+          <table class="tcTable" style="width:100%">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Input</th>
+                <th>Expected Output</th>
+                <th>Output</th>
+                <th>Status</th>
+                <th>Execution Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for tc in result.testcases %}
+              <tr>
+                <td>{{ tc.testcase_id }}</td>
+                <td><pre style='margin:0;white-space:pre-wrap;'>{{ tc.input_data }}</pre></td>
+                <td><pre style='margin:0;'>{{ tc.expected_data }}</pre></td>
+                <td><pre style='margin:0;'>{{ tc.output }}</pre></td>
+                <td class='{{ "status-pass" if tc.passed else "status-fail" }}'>
+                  {{ "Passed" if tc.passed else "Failed" }}
+                </td>
+                <td>{{ tc.execution_time }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+            <p class="small">No testcase results found.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <script>
+
+     function goHome() {
+    const role = "{{ session['user']['role'] }}";  // ✅ now it's a string
+    if (role === "student") {
+      window.location.href = "/student_dashboard";
+    } else if (role === "instructor") {
+      window.location.href = "/instructor_dashboard";
+    } else if (role === "admin") {
+      window.location.href = "/admin_dashboard";
+    } else {
+      window.location.href = "/";
+    }
+  }
+
+document.addEventListener("DOMContentLoaded", async () => {
+  const subId = {{ result.submission.submission_id }};
+  const fb = localStorage.getItem("pendingFeedback");
+  if (fb) {
+    const {score} = JSON.parse(fb);
+    try {
+      await fetch("/api/feedback/submit", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({submission_id: subId, score})
+      });
+      // Toast instead of alert
+      const toast = document.createElement("div");
+      toast.textContent = "✅ Feedback saved!";
+      toast.style.cssText = "position:fixed;bottom:20px;right:20px;background:#333;color:#fff;padding:10px 16px;border-radius:6px;z-index:2000;";
+      document.body.appendChild(toast);
+      setTimeout(()=>toast.remove(), 2500);
+    } catch (err) {
+      console.error("Feedback save failed", err);
+    }
+    localStorage.removeItem("pendingFeedback");
+  }
+});
+
+
+  </script>
+</body>
+</html>

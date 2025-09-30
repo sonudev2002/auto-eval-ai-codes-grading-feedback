@@ -1,0 +1,497 @@
+{% include 'partials/header.html' %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Instructor Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+:root{
+  --primary:#6366f1;--secondary:#10b981;--accent:#f97316;
+  --bg:#f4f5f7;--text:#1f2937;--muted:#6b7280;
+  --card:#fff;--shadow:0 6px 16px rgba(0,0,0,.08);--radius:10px;
+}
+body{margin:0;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;min-height:100vh;}
+main{flex:1}footer{margin-top:auto;text-align:center;padding:20px;color:var(--muted);font-size:14px}
+.dashboard-container{padding:32px;max-width:1400px;margin:auto}
+h2{display:flex;align-items:center;justify-content:space-between;font-weight:700;margin-bottom:1rem}
+.notification-bell{position:relative;cursor:pointer;font-size:24px;color:var(--primary);transition:.2s}
+.notification-bell:hover{transform:scale(1.1)}
+.notification-bell .badge{position:absolute;top:-6px;right:-8px;background:var(--accent);color:#fff;border-radius:50%;padding:2px 6px;font-size:11px;font-weight:700}
+#notifDropdown{display:none;position:absolute;right:20px;top:50px;background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);width:260px;z-index:10}
+#notifDropdown ul{list-style:none;margin:0;padding:6px 0;max-height:300px;overflow-y:auto}
+#notifDropdown li{padding:10px 14px;font-size:14px;color:var(--muted);border-bottom:1px solid #eee}
+.section{background:var(--card);padding:22px;margin:18px 0;border-radius:var(--radius);box-shadow:var(--shadow);backdrop-filter:blur(12px)}
+.section h3{font-weight:600;margin-bottom:14px;color:var(--primary)}
+.scrollable-table{overflow-x:auto}
+table{width:100%;border-collapse:collapse;border-radius:var(--radius);overflow:hidden}
+th,td{padding:10px 12px;text-align:center;font-size:14px}
+th{background:#eef2ff;color:var(--primary);font-weight:600}
+tr:nth-child(even){background:#fafafa}
+tr:hover{background:#f5f7ff}
+td button{background:var(--primary);color:#fff;border:none;padding:6px 10px;border-radius:6px;font-size:13px;cursor:pointer;transition:.2s}
+td button:hover{background:#4f46e5}
+.nav-tabs{border-bottom:2px solid #e5e7eb;position:sticky;top:0;background:var(--bg);z-index:5;border-radius:var(--radius)}
+.nav-tabs .nav-link{border:none;color:var(--muted);font-weight:500;padding:10px 16px;transition:.2s}
+.nav-tabs .nav-link:hover{background:#eef2ff;color:var(--primary)}
+.nav-tabs .nav-link.active{background:var(--primary);color:#fff!important;border-radius:var(--radius);box-shadow:var(--shadow)}
+.create-link{display:inline-block;margin:16px 0;padding:10px 16px;font-size:15px;color:#fff;background:var(--primary);border-radius:var(--radius);text-decoration:none;transition:.2s;box-shadow:var(--shadow)}
+.create-link:hover{background:#4f46e5;transform:translateY(-1px)}
+.charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px}
+.chart-box{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px}
+input[type="text"]{padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;outline:none;transition:.2s}
+input[type="text"]:focus{border-color:var(--primary);box-shadow:0 0 0 3px #c7d2fe}
+button{border:none;background:var(--secondary);color:#fff;border-radius:6px;padding:8px 14px;margin-left:6px;cursor:pointer;transition:.2s}
+button:hover{background:#059669}
+</style>
+
+</head>
+<body>
+<div style="padding:20px; max-width:1400px; margin:auto;">
+  <h2 class="mb-4">📊 Instructor Dashboard 
+    <span class="notification-bell" onclick="toggleDropdown()">🔔<span class="badge" id="notifCount">0</span></span>
+  </h2>
+  <div id="notifDropdown"><ul id="notifList"><li>Loading...</li></ul></div>
+
+  <!-- Create Assignment Link -->
+  <a href="{{ url_for('show_form') }}" class="create-link">➕ Create New Assignment</a>
+
+  <!-- ✅ Tab Navigation -->
+  <ul class="nav nav-tabs" id="dashboardTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="home-tab" data-bs-toggle="tab" data-bs-target="#home" type="button">🏠 Home</button>
+    </li>
+    <li class="nav-item"><button class="nav-link" id="trend-tab" data-bs-toggle="tab" data-bs-target="#trend" type="button">📈 Submission Trend</button></li>
+    <li class="nav-item"><button class="nav-link" id="feedback-tab" data-bs-toggle="tab" data-bs-target="#feedback" type="button">💬 Feedback & Scores</button></li>
+    <li class="nav-item"><button class="nav-link" id="performance-tab" data-bs-toggle="tab" data-bs-target="#performance" type="button">🎓 Student Performance</button></li>
+    <li class="nav-item"><button class="nav-link" id="extra-tab" data-bs-toggle="tab" data-bs-target="#extra" type="button">📊 Extra Analytics</button></li>
+    <li class="nav-item"><button class="nav-link" id="grades-tab" data-bs-toggle="tab" data-bs-target="#grades" type="button">📉 Grade Distribution</button></li>
+  </ul>
+
+  <!-- ✅ Tab Content -->
+  <div class="tab-content" id="dashboardTabContent" style="margin-top:20px;">
+
+    <!-- 🏠 HOME TAB -->
+    <div class="tab-pane fade show active" id="home" role="tabpanel">
+      <div class="section">
+        <h3>📊 Assignment Analytics</h3>
+        <div class="scrollable-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Title</th><th>Repository</th><th>Total Submissions</th>
+                <th>Avg Score</th><th>Plagiarism</th><th>Pass %</th>
+                <th>Avg Time</th><th>View Editor</th><th>Update</th><th>📊 Grade Distribution</th>
+              </tr>
+            </thead>
+            <tbody id="assignments-body">
+              <tr><td colspan="10">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="section">
+        <h3>🔔 Recent Notifications</h3>
+        <ul id="notifFeed"><li>Loading...</li></ul>
+      </div>
+    </div>
+
+    <!-- 📈 SUBMISSION TREND -->
+    <div class="tab-pane fade" id="trend" role="tabpanel">
+      <div class="section">
+        <h3>📈 Submission Trend Over Time</h3>
+        <div style="margin-bottom:10px;">
+          <button onclick="loadSubmissionTrend('day')">📅 Daily</button>
+          <button onclick="loadSubmissionTrend('week')">📆 Weekly</button>
+          <button onclick="loadSubmissionTrend('month')">🗓️ Monthly</button>
+        </div>
+        <canvas id="submissionTrendChart" height="150"></canvas>
+      </div>
+    </div>
+
+    <!-- 💬 FEEDBACK & SCORES -->
+    <div class="tab-pane fade" id="feedback" role="tabpanel">
+      <div class="section">
+        <h3>💬 Feedback & Scores</h3>
+        <div class="charts-grid">
+          <div class="chart-box"><canvas id="feedbackChart"></canvas></div>
+          <div class="chart-box"><canvas id="gradeChart"></canvas></div>
+          <div class="chart-box"><canvas id="scoreTrend"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 🎓 STUDENT PERFORMANCE -->
+    <div class="tab-pane fade" id="performance" role="tabpanel">
+      <div class="section">
+        <h3>🎓 Student Performance Overview</h3>
+        <table id="studentPerformance">
+          <thead><tr><th>Completion Rate</th><th>Pass Rate</th><th>Plagiarism Incidents</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <div class="chart-box mt-3" style="max-width:600px;">
+          <canvas id="performanceChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- 📊 EXTRA ANALYTICS -->
+    <div class="tab-pane fade" id="extra" role="tabpanel">
+      <div class="section">
+        <h3>📊 Extra Instructor Analytics</h3>
+        <div class="charts-grid">
+          <div class="chart-box"><canvas id="difficultyChart"></canvas></div>
+          <div class="chart-box"><canvas id="popularityChart"></canvas></div>
+          <div class="chart-box"><canvas id="plagiarismTrend"></canvas></div>
+          <div class="chart-box"><canvas id="feedbackTrend"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 📉 GRADE DISTRIBUTION -->
+    <div class="tab-pane fade" id="grades" role="tabpanel">
+      <div class="section">
+        <h3>📉 Grade Distribution</h3>
+        <div style="margin-bottom:10px;">
+          <input type="text" id="searchStudentInput" placeholder="Enter Student ID or Email"/>
+          <button onclick="searchStudentGrades()">🔍 Search</button>
+          <button onclick="fetchInstructorOverall()">🌍 Overall</button>
+        </div>
+        <canvas id="instructorGradeChart" height="150"></canvas>
+      </div>
+    </div>
+
+  </div> <!-- end tab-content -->
+
+</div>
+
+<!-- Assignment Distribution Modal -->
+<div class="modal fade" id="assignmentDistModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="assignmentModalTitle">📊 Assignment Grade Distribution</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <canvas id="assignmentGradeChart" height="250"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ✅ JS logic -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+let submissionTrendChart, instructorGradeChart, assignmentGradeChart, lastCount=0;
+
+// ---------------------------
+// Assignment Table
+// ---------------------------
+function renderAssignments(rows){
+  const tb=document.getElementById("assignments-body");
+  tb.innerHTML="";
+  if(!rows.length){
+    tb.innerHTML="<tr><td colspan='10'>No assignments</td></tr>";
+    return;
+  }
+  rows.forEach(a=>{
+    // Use escapeHtml to safely insert title into data-title
+    tb.innerHTML+=`
+      <tr>
+        <td>${escapeHtml(a.title)}</td>
+        <td>${escapeHtml(a.repo_title)} (#${a.repository_id})</td>
+        <td>${a.total_submission}</td>
+        <td>${a.average_score}</td>
+        <td>${a.plagiarism_cases}</td>
+        <td>${a.pass_percentage}</td>
+        <td>${a.average_time}</td>
+        <td><button onclick="openEditor(${a.assignment_id})">📝 Editor</button></td>
+        <td><button onclick="updateAssignment(${a.assignment_id}, ${a.repository_id})">⚙️ Update</button></td>
+        <td><button onclick="viewAssignmentDist(this, ${a.assignment_id})" data-title="${escapeHtml(a.title)}">📊 Distribution</button></td>
+      </tr>`;
+  });
+}
+
+// ---------------------------
+// Submission Trend
+// ---------------------------
+function renderSubmissionTrend(data){
+  const labels=[...new Set(data.map(r=>r.period || r.date))];
+  const assignments=[...new Set(data.map(r=>r.title))];
+
+  const datasets=assignments.map(title=>({
+    label:title,
+    data:labels.map(p=>{
+      const row=data.find(r=>(r.period||r.date)===p && r.title===title);
+      return row?row.submissions:0;
+    }),
+    borderColor:'#'+Math.floor(Math.random()*16777215).toString(16).padStart(6,"0"),
+    fill:false
+  }));
+
+  const ctx=document.getElementById("submissionTrendChart").getContext("2d");
+  if(submissionTrendChart) submissionTrendChart.destroy();
+  submissionTrendChart=new Chart(ctx,{
+    type:"line",
+    data:{labels,datasets},
+    options:{responsive:true,interaction:{mode:"index",intersect:false},
+      plugins:{title:{display:true,text:"Submissions Over Time"}}}
+  });
+}
+async function loadSubmissionTrend(interval="day"){
+  const res=await fetch(`/api/instructor/dashboard?interval=${interval}`);
+  const json=await res.json();
+  if(json.status==="success") renderSubmissionTrend(json.charts.submission_trend);
+}
+
+// ---------------------------
+// Notifications
+// ---------------------------
+function toggleDropdown(){
+  let d=document.getElementById('notifDropdown');
+  d.style.display=d.style.display==='block'?'none':'block';
+}
+function loadNotifications(userId, userRole){
+  fetch(`/notifications/feed/${userId}?role=${userRole}&limit=100`)
+    .then(r=>r.json())
+    .then(res=>{
+      if(!res||res.status==="error")return;
+      const data=res.feed||[];
+      let notifList=document.getElementById("notifList");
+      let notifFeed=document.getElementById("notifFeed");
+      notifList.innerHTML=""; notifFeed.innerHTML="";
+      let unreadCount=data.filter(n=>n.status==="unread").length;
+      document.getElementById("notifCount").innerText=unreadCount;
+      if(unreadCount>lastCount&&data.length>0){ alert("📢 "+data[0].message); }
+      lastCount=unreadCount;
+      data.forEach(n=>{
+        let li=document.createElement("li");
+        li.innerHTML=`${escapeHtml(n.message)} <small class="text-muted">(${n.source})</small>`;
+        li.classList.add(n.status==="unread"?"unread":"read");
+        notifList.appendChild(li);
+        let feedLi=document.createElement("li");
+        feedLi.innerHTML=li.innerHTML;
+        feedLi.classList.add(n.status==="unread"?"unread":"read");
+        notifFeed.appendChild(feedLi);
+      });
+    });
+}
+function escapeHtml(s){
+  return typeof s!=='string'?s:s.replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                              .replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+                              .replace(/'/g,'&#039;');
+}
+
+// ---------------------------
+// Grade Distribution
+// ---------------------------
+
+function fetchInstructorOverall(){
+  fetch("/api/analytics/grades/instructor/overall")
+    .then(r=>r.json())
+    .then(res=>{
+      if(res.status==="success") renderOverallTotals(res.data);
+      else alert("❌ Failed to load overall distribution");
+    })
+    .catch(err => { console.error("fetchInstructorOverall error:", err); alert("❌ Failed to load overall distribution"); });
+}
+
+function searchStudentGrades(){
+  const q=document.getElementById("searchStudentInput").value.trim();
+  if(!q){ alert("Enter Student ID or Email"); return; }
+  fetch(`/api/analytics/grades/instructor/search?id_or_email=${encodeURIComponent(q)}`)
+    .then(r=>r.json()).then(res=>{
+      if(res.status==="success")
+        renderInstructorGradeChart(res.data,`Student ${q} Grade Distribution`);
+      else alert("❌ No data found");
+    }).catch(err=>{ console.error(err); alert("❌ Error searching student"); });
+}
+
+function renderInstructorGradeChart(data,title){
+  const ctx=document.getElementById("instructorGradeChart").getContext("2d");
+  if(instructorGradeChart) instructorGradeChart.destroy();
+
+  let labels = data.labels || Object.keys(data);
+  let values = data.values || Object.values(data);
+
+  instructorGradeChart = new Chart(ctx,{
+    type:"bar",
+    data:{ labels, datasets:[{ label:"Grades", data: values,
+      backgroundColor:['#4caf50','#2196f3','#ffeb3b','#ff9800','#f44336','#9c27b0']}]
+    },
+    options:{ responsive:true,
+      plugins:{ legend:{ display:false }, title:{ display:true, text:title }},
+      scales:{ y:{ beginAtZero:true } }
+    }
+  });
+}
+
+function renderOverallTotals(data){
+  // Initialize grade buckets
+  let labels = ["A","B","C","D","E","F"];
+  let totals = [0,0,0,0,0,0];
+
+  // Aggregate each assignment's values (data should be mapping assignmentId -> {labels, values})
+  Object.values(data).forEach(assign=>{
+    if(Array.isArray(assign.values)){
+      assign.values.forEach((v,i)=>{ totals[i]=(totals[i]||0)+ (Number(v)||0); });
+    }
+  });
+
+  renderInstructorGradeChart({labels, values:totals},"Overall Student Grade Distribution");
+}
+
+
+// ---------------------------
+// Assignment Distribution (Modal)
+// ---------------------------
+function renderAssignmentGradeChart(data,title){
+  const ctx=document.getElementById("assignmentGradeChart").getContext("2d");
+  if(assignmentGradeChart) assignmentGradeChart.destroy();
+
+  let labels = data.labels || Object.keys(data);
+  let values = data.values || Object.values(data);
+
+  assignmentGradeChart = new Chart(ctx,{
+    type:"bar",
+    data:{ labels, datasets:[{ label:"Grades", data: values,
+      backgroundColor:['#4caf50','#2196f3','#ffeb3b','#ff9800','#f44336','#9c27b0']}]
+    },
+    options:{ responsive:true,
+      plugins:{ legend:{ display:false }, title:{ display:true, text:title }},
+      scales:{ y:{ beginAtZero:true } }
+    }
+  });
+
+  // Set modal title (dynamic)
+  const titleEl = document.getElementById("assignmentModalTitle");
+  if(titleEl) titleEl.textContent = title || "📊 Assignment Grade Distribution";
+
+  // Show modal
+  const modalEl = document.getElementById("assignmentDistModal");
+  const modal = new bootstrap.Modal(modalEl);
+  modal.show();
+
+  // Ensure chart is destroyed when modal is hidden to avoid memory leaks / duplicate charts
+  if(!modalEl.dataset.listenerAdded){
+    modalEl.addEventListener('hidden.bs.modal', ()=>{
+      if(assignmentGradeChart){ assignmentGradeChart.destroy(); assignmentGradeChart = null; }
+      // reset title
+      if(titleEl) titleEl.textContent = "📊 Assignment Grade Distribution";
+    });
+    modalEl.dataset.listenerAdded = "1";
+  }
+}
+
+/**
+ * Called from the Distribution button:
+ * viewAssignmentDist(buttonElement, assignmentId)
+ */
+function viewAssignmentDist(button, aid){
+  // button is the element that was clicked; it should carry data-title
+  let title = (button && button.getAttribute) ? (button.getAttribute('data-title') || `Assignment ${aid}`) : `Assignment ${aid}`;
+
+  fetch(`/api/grade/distribution/assignment/${aid}`)
+    .then(r=>r.json())
+    .then(d=>{
+      if(d.status!=="success"){
+        alert("❌ Failed to load assignment grade distribution");
+        return;
+      }
+      // use given title if present
+      renderAssignmentGradeChart(d.data, `${title} — Grade Distribution`);
+    })
+    .catch(err=>{
+      console.error("viewAssignmentDist error:", err);
+      alert("Error loading assignment distribution: "+err);
+    });
+}
+
+// ---------------------------
+// Navigation actions
+// ---------------------------
+function openEditor(aid){ window.location.href=`/code_editor/${aid}`; }
+function updateAssignment(aid,rid){ window.location.href=`/create-assignment#update?assignment_id=${aid}&repo_id=${rid}`; }
+
+// ---------------------------
+// Main Init
+// ---------------------------
+document.addEventListener("DOMContentLoaded", async ()=>{
+  try{
+    const res=await fetch("/api/instructor/dashboard?interval=day");
+    const data=await res.json();
+    if(data.status!=="success") throw new Error(data.message);
+
+    renderAssignments(data.assignment_analytics);
+    renderSubmissionTrend(data.charts.submission_trend);
+
+    // Student performance
+    const perfBody=document.querySelector("#studentPerformance tbody");
+    const perf=data.performance_summary || {avg_completion:0, avg_pass:0, total_plagiarism:0};
+    perfBody.innerHTML=`<tr><td>${Math.round(perf.avg_completion)}%</td>
+                          <td>${Math.round(perf.avg_pass)}%</td>
+                          <td>${perf.total_plagiarism}</td></tr>`;
+
+    // Charts
+    new Chart(document.getElementById('feedbackChart'),{type:'bar',
+      data:{labels:data.charts.feedback.labels,
+      datasets:[{label:'Avg Feedback Score',data:data.charts.feedback.values,backgroundColor:'#007BFF'}]}});
+
+    new Chart(document.getElementById('gradeChart'),{type:'pie',
+      data:{labels:Object.keys(data.charts.grades),
+      datasets:[{data:Object.values(data.charts.grades),
+      backgroundColor:['#28a745','#17a2b8','#ffc107','#fd7e14','#6c757d','#dc3545']}]}} );
+
+    new Chart(document.getElementById('scoreTrend'),{type:'line',
+      data:{labels:data.charts.score_trend.labels,
+      datasets:[{label:'Avg Score',data:data.charts.score_trend.values,borderColor:'#007BFF',fill:false}]}} );
+
+    new Chart(document.getElementById('performanceChart'),{type:'bar',
+      data:{labels:Object.keys(data.charts.performance_bands),
+      datasets:[{label:'Students',data:Object.values(data.charts.performance_bands),
+      backgroundColor:['#28a745','#17a2b8','#ffc107','#dc3545']}]}} );
+
+    new Chart(document.getElementById('difficultyChart'),{type:'bar',
+      data:{labels:data.charts.difficulty.labels,
+      datasets:[{label:'Avg Score (%)',data:data.charts.difficulty.values,
+      backgroundColor:['#28a745','#ffc107','#dc3545']}]}} );
+
+    new Chart(document.getElementById('popularityChart'),{type:'bar',
+      data:{labels:data.charts.popularity.labels,
+      datasets:[{label:'Submissions',data:data.charts.popularity.values,backgroundColor:'#17a2b8'}]}});
+
+    new Chart(document.getElementById('plagiarismTrend'),{type:'line',
+      data:{labels:data.charts.plagiarism_trend.labels,
+      datasets:[{label:'Plagiarism Cases',data:data.charts.plagiarism_trend.values,
+      borderColor:'#dc3545',fill:false}]}} );
+
+    new Chart(document.getElementById('feedbackTrend'),{type:'line',
+      data:{labels:data.charts.feedback_trend.labels,
+      datasets:[{label:'Feedback Avg',data:data.charts.feedback_trend.values,
+      borderColor:'#007BFF',fill:false}]}} );
+
+    // Notifications + Grades
+    const userId={{ session['user']['user_id'] }};
+    const userRole="{{ session['user']['role']|lower }}";
+    loadNotifications(userId,userRole);
+    setInterval(()=>loadNotifications(userId,userRole),30000);
+    fetchInstructorOverall();
+  }catch(err){
+    console.error("Dashboard load failed",err);
+    alert("❌ Failed to load instructor analytics");
+  }
+});
+</script>
+
+<!-- Bootstrap JS (required for modal) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>
+{% include 'partials/footer.html' %}

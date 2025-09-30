@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login / Signup</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css"
+    />
+    <style>
+      /* (Your CSS unchanged) */
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100vw;
+        font-family: Arial, sans-serif;
+        background-image: url("{{ url_for('static', filename='images/login_bg_medium.jpg') }}");
+        background-repeat: no-repeat;
+        background-position: center center;
+        background-size: cover;
+        background-attachment: fixed;
+      }
+      .container {
+        width: 90%;
+        max-width: 1000px;
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 0 12px rgba(54, 236, 184, 0.1);
+      }
+      .tabs {
+        display: flex;
+        justify-content: space-around;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+      }
+      .tab {
+        flex: 1 1 50%;
+        text-align: center;
+        padding: 10px 0;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        font-weight: bold;
+        transition: 0.3s;
+      }
+      .tab.active {
+        border-color: #007bff;
+        color: #007bff;
+      }
+      form {
+        display: none;
+      }
+      form.visible {
+        display: block;
+      }
+      label {
+        display: block;
+        margin-top: 10px;
+        font-size: 0.95rem;
+      }
+      input,
+      select {
+        width: 100%;
+        padding: 10px;
+        margin-top: 4px;
+        margin-bottom: 12px;
+        font-size: 1rem;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        box-sizing: border-box;
+      }
+      button {
+        padding: 10px;
+        background: #007bff;
+        color: white;
+        border: none;
+        width: 100%;
+        font-size: 1rem;
+        cursor: pointer;
+        border-radius: 6px;
+        transition: background 0.3s;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+      .form-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+      }
+      .form-column {
+        flex: 1;
+        min-width: 240px;
+      }
+      .form-actions {
+        margin-top: 20px;
+      }
+      .form-actions button,
+      #otp-section input {
+        width: 100%;
+        margin-top: 10px;
+      }
+      #otp-section {
+        margin-top: 15px;
+      }
+      @media (max-width: 1024px) {
+        .container {
+          width: 70%;
+        }
+      }
+      @media (max-width: 768px) {
+        body {
+          padding: 10px;
+          align-items: flex-start;
+        }
+        .container {
+          width: 90%;
+        }
+        .form-grid {
+          flex-direction: column;
+        }
+        .tab {
+          flex: 1 1 100%;
+          font-size: 1rem;
+        }
+        input,
+        select,
+        button {
+          font-size: 1rem;
+        }
+      }
+      @media (max-width: 480px) {
+        label {
+          font-size: 0.9rem;
+        }
+        input,
+        select {
+          font-size: 0.95rem;
+          padding: 8px;
+        }
+        button {
+          padding: 8px;
+          font-size: 0.95rem;
+        }
+      }
+      .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: transparent;
+        z-index: -1;
+      }
+    </style>
+  </head>
+  <body style="margin: 0; display: flex; flex-direction: column; min-height: 100vh">
+    <div class="overlay"></div>
+    <div style="flex: 1; display: flex; justify-content: center; align-items: flex-start; padding: 40px 0;">
+      <div class="container">
+        <div class="tabs">
+          <div class="tab active" onclick="showTab('login')">Login</div>
+          <div class="tab" onclick="showTab('signup')">Signup</div>
+          <div class="tab" onclick="showTab('forget-password')">Forget Password</div>
+        </div>
+
+        <!-- Login Form -->
+        <form id="login-form" class="visible">
+          <label for="login-email">Email:</label>
+          <input id="login-email" type="email" name="email" required />
+          <label for="login-password">Password:</label>
+          <input id="login-password" type="password" name="password" required />
+          <button type="submit">Login</button>
+        </form>
+
+        <!-- Signup Form -->
+        <form id="signup-form" enctype="multipart/form-data">
+          <div class="form-grid">
+            <div class="form-column">
+              <label>First Name:</label>
+              <input name="first_name" required />
+              <label>Middle Name:</label>
+              <input name="middle_name" />
+              <label>Last Name:</label>
+              <input name="last_name" required />
+              <label>Email:</label>
+              <input name="email" type="email" required />
+              <label>Mobile:</label>
+              <input name="mobile" type="text" maxlength="10" required />
+              <label>Password:</label>
+              <input name="password" type="password" required />
+              <label>Confirm Password:</label>
+              <input name="confirm_password" type="password" id="confirm_password" required />
+            </div>
+
+            <div class="form-column">
+              <label>Profile Picture:</label>
+              <input type="file" name="profile_picture" accept="image/*" />
+              <label>Country:</label>
+              <input name="country" required />
+              <label>State:</label>
+              <input name="state" />
+              <label>District:</label>
+              <input name="district" />
+              <label>Local Address:</label>
+              <input name="local_address" />
+              <label>Pincode:</label>
+              <input name="pincode" />
+              <label>Role:</label>
+              <select name="role">
+                <option value="student">Student</option>
+                <option value="instructor">Instructor</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" id="send-otp-btn" onclick="sendOTP()">Send OTP</button>
+
+            <div id="otp-section" style="display: none">
+              <label>Enter OTP:</label>
+              <input type="text" id="otp" />
+              <button type="button" id="verify-otp-btn" onclick="verifyOTP()">Verify OTP</button>
+              <button type="button" id="resend-otp-btn" onclick="sendOTP()">Resend OTP</button>
+            </div>
+
+            <button type="submit" id="signup-submit" style="display: none">Signup</button>
+            <button type="reset" style="background: #6c757d">Reset Form</button>
+          </div>
+        </form>
+
+        <!-- Change Password Form -->
+        <form id="forget-password-form">
+          <label>Email:</label>
+          <input type="email" name="email" id="forget_email" required />
+
+          <label>Role:</label>
+          <select name="role" id="forget_role" required>
+            <option value="student">Student</option>
+            <option value="instructor">Instructor</option>
+            <option value="admin">Admin</option>
+          </select>
+
+          <div class="form-actions">
+            <button type="button" id="fp-send-btn" onclick="sendForgetOTP()">Send OTP</button>
+
+            <div id="fp-otp-section" style="display: none">
+              <label>Enter OTP:</label>
+              <input type="text" id="fp-otp" />
+              <button type="button" id="fp-resend-btn" onclick="sendForgetOTP()">Resend OTP</button>
+              <button type="button" id="fp-verify-btn" onclick="verifyForgetOTP()">Verify OTP</button>
+            </div>
+
+            <div id="fp-password-section" style="display: none">
+              <label>New Password:</label>
+              <input type="password" id="fp-new-pass" name="password" />
+              <label>Confirm Password:</label>
+              <input type="password" id="fp-confirm-pass" name="confirm_password" />
+              <button type="submit" id="fp-change-btn">Change Password</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+      /* -------------------- helpers -------------------- */
+      async function safeFetch(url, options = {}) {
+        try {
+          const res = await fetch(url, options);
+          let data = null;
+          // attempt to parse JSON when possible
+          const contentType = res.headers.get("content-type") || "";
+          if (contentType.includes("application/json")) {
+            try {
+              data = await res.json();
+            } catch (err) {
+              return { ok: res.ok, error: "Invalid JSON response", status: res.status };
+            }
+          } else {
+            // non-json response
+            const text = await res.text();
+            return { ok: res.ok, error: text || "Non-JSON response", status: res.status };
+          }
+          return { ok: res.ok, data, status: res.status };
+        } catch (err) {
+          return { ok: false, error: err.message || "Network error" };
+        }
+      }
+
+      /* -------------------- 1. Tab switching -------------------- */
+      function showTab(tab) {
+        document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+        const tabSelector = `.tab[onclick="showTab('${tab}')"]`;
+        const theTab = document.querySelector(tabSelector);
+        if (theTab) theTab.classList.add("active");
+
+        document.querySelectorAll("form").forEach((f) => f.classList.remove("visible"));
+        const form = document.getElementById(`${tab}-form`);
+        if (form) form.classList.add("visible");
+      }
+
+      /* -------------------- 2. Grab elements -------------------- */
+      const loginForm = document.getElementById("login-form");
+      const signupForm = document.getElementById("signup-form");
+      const forgetForm = document.getElementById("forget-password-form");
+
+      // Signup step controls
+      const sendBtn = document.getElementById("send-otp-btn");
+      const otpSection = document.getElementById("otp-section");
+      const verifyBtn = document.getElementById("verify-otp-btn");
+      const resendBtn = document.getElementById("resend-otp-btn");
+      const signupBtn = document.getElementById("signup-submit");
+
+      /* -------------------- 3. Signup step control -------------------- */
+      function setSignupStep(step) {
+        if (step === "initial") {
+          sendBtn.style.display = "block";
+          otpSection.style.display = "none";
+          verifyBtn.style.display = "none";
+          resendBtn.style.display = "none";
+          signupBtn.style.display = "none";
+        } else if (step === "otp_sent") {
+          sendBtn.style.display = "none";
+          otpSection.style.display = "block";
+          verifyBtn.style.display = "inline-block";
+          resendBtn.style.display = "inline-block";
+          signupBtn.style.display = "none";
+        } else if (step === "verified") {
+          sendBtn.style.display = "none";
+          otpSection.style.display = "none";
+          verifyBtn.style.display = "none";
+          resendBtn.style.display = "none";
+          signupBtn.style.display = "block";
+        }
+      }
+
+      /* -------------------- 4. Forget password step control -------------------- */
+      function setForgetStep(step) {
+        const sendBtn = document.getElementById("fp-send-btn");
+        const otpSection = document.getElementById("fp-otp-section");
+        const passwordSection = document.getElementById("fp-password-section");
+        // verify & resend buttons exist inside otp-section
+
+        if (step === "initial") {
+          sendBtn.style.display = "block";
+          otpSection.style.display = "none";
+          passwordSection.style.display = "none";
+        } else if (step === "otp_sent") {
+          sendBtn.style.display = "none";
+          otpSection.style.display = "block";
+          passwordSection.style.display = "none";
+        } else if (step === "verified") {
+          sendBtn.style.display = "none";
+          otpSection.style.display = "none";
+          passwordSection.style.display = "block";
+        }
+      }
+
+      /* -------------------- 5. Event handlers -------------------- */
+
+      // Login
+      loginForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const formData = new FormData(loginForm);
+        const result = await safeFetch("/login", { method: "POST", body: formData });
+        if (!result.ok) {
+          Swal.fire("Error", result.error || "Login failed", "error");
+          return;
+        }
+        const data = result.data;
+        if (data.success) {
+          Swal.fire("Login Success", "", "success").then(() => {
+            if (data.redirect) window.location.href = data.redirect;
+          });
+        } else {
+          Swal.fire("Error", data.message || "Login Failed", "error");
+        }
+      });
+
+      // Signup OTP requests
+      async function sendOTP() {
+        const email = (signupForm.elements["email"] || {}).value || "";
+        const mobile = (signupForm.elements["mobile"] || {}).value || "";
+        const role = (signupForm.elements["role"] || {}).value || "";
+
+        if (!email && !mobile) {
+          Swal.fire("Error", "Please provide email or mobile", "error");
+          return;
+        }
+
+        const payload = { email, mobile, role };
+        const result = await safeFetch("/send-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!result.ok) {
+          Swal.fire("Error", result.error || (result.data && result.data.message) || "Failed to send OTP", "error");
+          return;
+        }
+
+        const data = result.data;
+        if (data.success) {
+          Swal.fire("OTP Sent", "Check email and SMS", "success").then(() => setSignupStep("otp_sent"));
+        } else {
+          Swal.fire("Error", data.message || "Failed to send OTP", "error");
+        }
+      }
+
+      async function verifyOTP() {
+        const email = (signupForm.elements["email"] || {}).value || "";
+        const otp = document.getElementById("otp").value || "";
+
+        if (!otp) {
+          Swal.fire("Error", "Enter OTP", "error");
+          return;
+        }
+
+        const result = await safeFetch("/verify-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, otp }),
+        });
+
+        if (!result.ok) {
+          Swal.fire("Error", result.error || "Verification failed", "error");
+          return;
+        }
+
+        const data = result.data;
+        if (data.valid) {
+          Swal.fire("OTP Verified", "You can now signup", "success");
+          setSignupStep("verified");
+        } else {
+          Swal.fire("OTP Failed", data.message || "Invalid OTP", "error");
+        }
+      }
+
+      signupForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const password = (signupForm.elements["password"] || {}).value || "";
+        const confirmPassword = (signupForm.elements["confirm_password"] || {}).value || "";
+
+        if (password !== confirmPassword) {
+          Swal.fire({ icon: "error", title: "Password Mismatch", text: "Both passwords must be the same." });
+          return;
+        }
+
+        const formData = new FormData(signupForm);
+        const result = await safeFetch("/signup", { method: "POST", body: formData });
+
+        if (!result.ok) {
+          Swal.fire("Error", result.error || "Signup failed", "error");
+          return;
+        }
+
+        const data = result.data;
+        if (data.success === true) {
+          Swal.fire({ title: "Signup Successful", text: "You can now login!", icon: "success" }).then(() => {
+            showTab("login");
+            setSignupStep("initial");
+            signupForm.reset();
+          });
+        } else {
+          Swal.fire({
+            icon: "error",
+            title: "Signup Failed",
+            html: `<strong>Reason:</strong> ${data.details || data.message || data.error || "Something went wrong!"}`,
+          });
+        }
+      });
+
+      // Forget password OTP flow
+      async function sendForgetOTP() {
+        const email = document.getElementById("forget_email").value || "";
+        const role = document.getElementById("forget_role").value || "";
+
+        if (!email) {
+          Swal.fire("Error", "Email required", "error");
+          return;
+        }
+
+        const result = await safeFetch("/send-otp-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, role }),
+        });
+
+        if (!result.ok) {
+          Swal.fire("Error", result.error || "Failed to send OTP", "error");
+          return;
+        }
+
+        const data = result.data;
+        if (data.success) {
+          Swal.fire("OTP Sent", "Check your email", "success").then(() => setForgetStep("otp_sent"));
+        } else {
+          Swal.fire("Error", data.message || "Failed to send OTP", "error");
+        }
+      }
+
+      async function verifyForgetOTP() {
+        const email = (forgetForm.elements["email"] || {}).value || "";
+        const otp = document.getElementById("fp-otp").value || "";
+        const role = document.getElementById("forget_role").value || "";
+
+        if (!otp) {
+          Swal.fire("Error", "Enter OTP", "error");
+          return;
+        }
+
+        // send role too in case backend needs it
+        const result = await safeFetch("/verify-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, otp, role }),
+        });
+
+        if (!result.ok) {
+          Swal.fire("Error", result.error || "Verification failed", "error");
+          return;
+        }
+
+        const data = result.data;
+        if (data.valid) {
+          Swal.fire("OTP Verified", "You can now reset password", "success");
+          setForgetStep("verified");
+        } else {
+          Swal.fire("OTP Failed", data.message || "Invalid OTP", "error");
+        }
+      }
+
+      // Reset password submit
+      forgetForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const password = forgetForm.elements["password"]?.value || "";
+  const confirmPassword = forgetForm.elements["confirm_password"]?.value || "";
+  const email = forgetForm.elements["email"]?.value || "";
+  const role = forgetForm.elements["role"]?.value || "";
+
+  // 1. Password validation
+  if (password !== confirmPassword) {
+    Swal.fire({
+      icon: "error",
+      title: "Password Mismatch",
+      text: "Both passwords must be the same."
+    });
+    return;
+  }
+
+  try {
+    // 2. Send POST request
+    const response = await fetch("/reset-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, role, password }),
+    });
+
+    // 3. Parse JSON
+    const data = await response.json();
+
+    // 4. Check success
+    if (data.success) {
+      Swal.fire("Password Changed", data.message || "You can now login", "success")
+        .then(() => {
+          showTab("login");
+          setForgetStep("initial");
+          forgetForm.reset();
+        });
+    } else {
+      Swal.fire("Reset Failed", data.message || data.error || "Unable to reset password", "error");
+    }
+
+  } catch (err) {
+    // 5. Network / unexpected errors
+    Swal.fire("Error", "Something went wrong. Please try again.", "error");
+    console.error("Reset password error:", err);
+  }
+});
+
+
+      /* -------------------- 6. Initialize both flows -------------------- */
+      window.onload = () => {
+        setSignupStep("initial");
+        setForgetStep("initial");
+      };
+    </script>
+
+    <!-- include footer inside body (moved here so it renders correctly) -->
+    {% include 'partials/footer.html' %}
+  </body>
+</html>
