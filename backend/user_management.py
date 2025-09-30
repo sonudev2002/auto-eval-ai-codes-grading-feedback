@@ -1,6 +1,5 @@
 import os
 import uuid
-import random
 import time
 import smtplib
 import requests
@@ -13,11 +12,25 @@ from db import get_connection
 from user_agents import parse
 from config import Config
 import traceback
-from typing import Any, Dict, Optional, TypedDict
-from analytics import DBConnection
-import traceback
+from typing import Any, Dict, Optional, TypedDict, Optional
 from decimal import Decimal
 from datetime import date, datetime, time, timedelta
+from analytics import DBConnection, normalize_row
+
+
+# NEW: S3 helper + typing
+try:
+    from storage import upload_fileobj, make_key_for_file  # if storage.py exists
+
+    S3_ENABLED = True
+except Exception:
+    S3_ENABLED = False
+
+# Keep upload folder constant
+UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "uploads")
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+MAX_PIC_BYTES = int(os.getenv("MAX_PIC_BYTES", 2 * 1024 * 1024))  # 2 MB default
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
 
 
 def normalize_row(row: dict | None) -> dict | None:
@@ -42,18 +55,8 @@ def normalize_row(row: dict | None) -> dict | None:
     return clean
 
 
-# Allowed picture extensions
-ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
-
-UPLOAD_FOLDER = "uploads"
-MAX_PIC_BYTES = 2 * 1024 * 1024  # 2 MB
-
 USERS = []  # For checking uniqueness
 OTP_STORE = {}
-
-UPLOAD_FOLDER = "uploads"
-ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
 class UserRow(TypedDict):
@@ -83,14 +86,56 @@ def is_email_registered(email):
         conn.close()
 
 
-def save_profile_picture(file):
-    if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        unique_name = f"{uuid.uuid4()}_{filename}"
-        filepath = os.path.join(UPLOAD_FOLDER, unique_name)
-        file.save(filepath)
-        return filepath
-    return None
+def save_profile_picture(file) -> str | None:
+    """
+    Saves uploaded profile picture.
+    - If S3 configured (storage.upload_fileobj), upload to S3 and return the S3 URL.
+    - Else save locally under UPLOAD_FOLDER and return local path.
+    Returns the stored path/URL or None.
+    """
+    if not file or not getattr(file, "filename", ""):
+        return None
+
+    filename = secure_filename(file.filename)
+    if not allowed_file(filename):
+        return None
+
+    # Check size safely
+    try:
+        file.stream.seek(0, os.SEEK_END)
+        size = file.stream.tell()
+        file.stream.seek(0)
+    except Exception:
+        size = None
+
+    if size is not None and size > MAX_PIC_BYTES:
+        # File too large
+        return None
+
+    # Try S3 first (if available)
+    if S3_ENABLED:
+        try:
+            key = make_key_for_file(file)  # e.g. uploads/<uuid>_name.png
+            # upload_fileobj expects file.stream or file (file-like)
+            url = upload_fileobj(file.stream, key)
+            return url
+        except Exception as e:
+            # fallback to local save on failure (and log)
+            current_app.logger.warning(
+                "S3 upload failed, falling back to local save: %s", e
+            )
+
+    # Local fallback (ensure directory exists)
+    try:
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        unique_name = f"{uuid.uuid4().hex}_{filename}"
+        dest_path = os.path.join(UPLOAD_FOLDER, unique_name)
+        file.save(dest_path)
+        # store the filesystem path (convert to web-safe backslashes)
+        return dest_path.replace("\\", "/")
+    except Exception as e:
+        current_app.logger.error("Failed to save profile picture locally: %s", e)
+        return None
 
 
 def generate_otp():
@@ -98,27 +143,53 @@ def generate_otp():
     return f"{random.randint(100000, 999999)}"
 
 
-def send_email_otp(to_email, otp):
-    print("user management inside send_email_otp")
+def send_email_otp(to_email: str, otp: str) -> bool:
+    """
+    Send OTP email using SMTP server configured via environment (Config or SMTP_* variables).
+    Uses EMAIL_SENDER and EMAIL_PASSWORD_SENDER from Config by default, with optional SMTP server/port env.
+    """
+    smtp_server = os.getenv("EMAIL_SMTP_SERVER", "smtp.gmail.com")
+    smtp_port = int(os.getenv("EMAIL_SMTP_PORT", "465"))
+    sender = os.getenv("EMAIL_SENDER", getattr(Config, "EMAIL_SENDER", None))
+    password = os.getenv(
+        "EMAIL_PASSWORD_SENDER", getattr(Config, "EMAIL_PASSWORD_SENDER", None)
+    )
+
+    if not to_email or not sender or not password:
+        current_app.logger.warning(
+            "Email OTP not sent: missing SMTP credentials or recipient."
+        )
+        return False
+
     msg = EmailMessage()
     msg["Subject"] = "Your OTP Code"
-    msg["From"] = "dde249784@gmail.com"
+    msg["From"] = sender
     msg["To"] = to_email
     msg.set_content(f"Your OTP code is: {otp}")
+
     try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-            smtp.login("gopalsinghdev1973@gmail.com", "fueg kjtr zisu kxaq")
-            smtp.send_message(msg)
+        # Use SMTP_SSL when port is 465; else use STARTTLS for 587
+        if smtp_port == 465:
+            with smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=10) as smtp:
+                smtp.login(sender, password)
+                smtp.send_message(msg)
+        else:
+            with smtplib.SMTP(smtp_server, smtp_port, timeout=10) as smtp:
+                smtp.starttls()
+                smtp.login(sender, password)
+                smtp.send_message(msg)
         return True
     except Exception as e:
-        print("Email sending error:", e)
+        current_app.logger.error("Email sending error: %s", e)
         return False
 
 
-def send_sms_otp(mobile, otp):
-    url = "https://www.fast2sms.com/dev/bulkV2"
+def send_sms_otp(mobile: str, otp: str) -> bool:
+    url = os.getenv("FAST2SMS_URL", "https://www.fast2sms.com/dev/bulkV2")
     payload = {
-        "authorization": Config.FAST2SMS_API_KEY,
+        "authorization": os.getenv(
+            "FAST2SMS_API_KEY", getattr(Config, "FAST2SMS_API_KEY", None)
+        ),
         "message": f"Your OTP is {otp}",
         "language": "english",
         "route": "q",
@@ -127,10 +198,10 @@ def send_sms_otp(mobile, otp):
     headers = {"cache-control": "no-cache", "authorization": payload["authorization"]}
 
     try:
-        response = requests.post(url, data=payload, headers=headers)
-        return response.status_code == 200 and "true" in response.text.lower()
+        response = requests.post(url, data=payload, headers=headers, timeout=10)
+        return response.status_code == 200 and "true" in (response.text or "").lower()
     except Exception as e:
-        print("SMS sending error:", e)
+        current_app.logger.error("SMS sending error: %s", e)
         return False
 
 
@@ -211,7 +282,7 @@ def register_user():
 
     if not otp_record or not otp_record.get("verified"):
         return jsonify({"error": "OTP verification required"}), 403
-    print(email)
+
     if is_email_registered(email):
         return jsonify({"error": "Email already registered"}), 409
 
@@ -225,7 +296,8 @@ def register_user():
     try:
         conn = get_connection()
         cursor = conn.cursor()
-        print("user register inside")
+
+        # Insert address (use provided fields, allow NULLs)
         cursor.execute(
             """
             INSERT INTO address (country_name, state_name, district_name, local_address, pincode, created_at)
@@ -242,6 +314,9 @@ def register_user():
         )
         address_id = cursor.lastrowid
 
+        # Hash password and insert user
+        password_hash = generate_password_hash(data.get("password") or "")
+
         cursor.execute(
             """
             INSERT INTO user_profile 
@@ -254,8 +329,8 @@ def register_user():
                 data.get("last_name"),
                 email,
                 mobile,
-                generate_password_hash(data.get("password")),
-                data.get("role"),
+                password_hash,
+                data.get("role", "student"),
                 profile_path,
                 address_id,
                 datetime.now(),
@@ -270,10 +345,13 @@ def register_user():
             201,
         )
     except Exception as e:
-        print("DB insert failed:", str(e))
+        current_app.logger.exception("DB insert failed")
         return jsonify({"error": "Registration failed", "details": str(e)}), 500
     finally:
-        conn.close()
+        try:
+            conn.close()
+        except Exception:
+            pass
 
 
 def check_email():
@@ -458,9 +536,6 @@ def change_password():
 # --------------------
 # Read-only: ProfileData
 # --------------------
-from typing import Any, Optional, Dict, List
-from analytics import DBConnection, normalize_row
-from db import get_connection
 
 
 # --------------------
@@ -707,35 +782,111 @@ class UpdateProfileData(AdminProfileData):
     # Profile Picture
     # ----------------------------
     def update_picture(self, file=None, delete_picture: bool = False) -> Dict[str, Any]:
+
         try:
             current_user = self.get_user_info() or {}
             if not current_user:
                 return {"status": "error", "message": "User not found."}
 
             old_pic_path = current_user.get("profile_picture_path")
-            old_pic_full = (
-                os.path.join(UPLOAD_FOLDER, os.path.basename(old_pic_path))
-                if old_pic_path
-                else None
-            )
             new_pic_path = None
 
-            if delete_picture:
-                if old_pic_full and os.path.exists(old_pic_full):
+            # Helper: detect S3 URL for bucket-based urls (simple heuristic)
+            def is_s3_url(url: str) -> bool:
+                if not url:
+                    return False
+                # common S3 URL patterns: https://bucket.s3.amazonaws.com/key or https://s3.amazonaws.com/bucket/key
+                return url.startswith("https://") and (
+                    ".s3." in url or "s3.amazonaws.com" in url
+                )
+
+            # Helper: delete old local file
+            def delete_local(path: str):
+                try:
+                    if path and os.path.exists(path):
+                        os.remove(path)
+                except Exception as e:
+                    current_app.logger.warning(
+                        f"Failed to delete local file {path}: {e}"
+                    )
+
+            # Helper: delete old S3 object (if boto3 available)
+            def delete_s3_object(url: str):
+                try:
+                    # Try to use storage.delete_s3_key if provided
                     try:
-                        os.remove(old_pic_full)
-                    except Exception as e:
-                        current_app.logger.warning(f"Failed to delete old picture: {e}")
+                        from storage import delete_s3_key  # optional helper you may add
+
+                        # user-provided helper expects the S3 key or full URL; adjust as needed
+                        delete_s3_key(url)
+                        return
+                    except Exception:
+                        pass
+
+                    # Fallback: parse bucket/key from URL and delete via boto3
+                    from urllib.parse import urlparse
+
+                    parsed = urlparse(url)
+                    host = parsed.netloc  # e.g. bucket.s3.amazonaws.com
+                    path = parsed.path.lstrip("/")  # either key or 'bucket/key'
+                    # Two cases: bucket.s3.amazonaws.com/key  OR s3.amazonaws.com/bucket/key
+                    if "s3.amazonaws.com" in host and host.split(".")[0] != "s3":
+                        # bucket.s3.amazonaws.com/key
+                        bucket = host.split(".")[0]
+                        key = path
+                    elif host.startswith("s3.") or host == "s3.amazonaws.com":
+                        # s3.amazonaws.com/bucket/key
+                        parts = path.split("/", 1)
+                        if len(parts) == 2:
+                            bucket, key = parts[0], parts[1]
+                        else:
+                            return
+                    else:
+                        # Last-resort: if URL contains bucket name in host: try to infer
+                        # Not guaranteed; skip deletion
+                        return
+
+                    # perform delete
+                    import boto3
+
+                    s3 = boto3.client(
+                        "s3",
+                        aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+                        aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+                        region_name=os.getenv("AWS_REGION", None),
+                    )
+                    s3.delete_object(Bucket=bucket, Key=key)
+                except Exception as e:
+                    current_app.logger.warning(f"Failed to delete S3 object {url}: {e}")
+
+            # -----------------------
+            # Delete only (no upload)
+            # -----------------------
+            if delete_picture:
+                if old_pic_path:
+                    if is_s3_url(old_pic_path):
+                        delete_s3_object(old_pic_path)
+                    else:
+                        # old_pic_path may be a filesystem path (absolute or relative)
+                        delete_local(old_pic_path)
                 new_pic_path = None
 
+            # -----------------------
+            # Upload new picture flow
+            # -----------------------
             elif file and hasattr(file, "filename") and file.filename:
                 if not allowed_file(file.filename):
                     return {"status": "error", "message": "File extension not allowed."}
 
-                file.stream.seek(0, os.SEEK_END)
-                size = file.stream.tell()
-                file.stream.seek(0)
-                if size > MAX_PIC_BYTES:
+                # size check (safe)
+                try:
+                    file.stream.seek(0, os.SEEK_END)
+                    size = file.stream.tell()
+                    file.stream.seek(0)
+                except Exception:
+                    size = None
+
+                if size is not None and size > MAX_PIC_BYTES:
                     return {"status": "error", "message": "File too large (max 2MB)."}
 
                 mimetype = getattr(file, "mimetype", "") or ""
@@ -745,25 +896,47 @@ class UpdateProfileData(AdminProfileData):
                         "message": "Uploaded file is not an image.",
                     }
 
-                if old_pic_full and os.path.exists(old_pic_full):
+                # Use centralized helper which will upload to S3 if configured (or fallback to local)
+                try:
+                    # save_profile_picture must be defined elsewhere in the module
+                    new_pic_path = save_profile_picture(file)
+                    if not new_pic_path:
+                        return {
+                            "status": "error",
+                            "message": "Failed to save profile picture.",
+                        }
+                except Exception as e:
+                    current_app.logger.error(f"Error saving profile picture: {e}")
+                    return {
+                        "status": "error",
+                        "message": "Failed to save profile picture.",
+                    }
+
+                # After successful upload, delete old picture (local or S3) to avoid orphaned files
+                if old_pic_path:
                     try:
-                        os.remove(old_pic_full)
+                        if is_s3_url(old_pic_path):
+                            delete_s3_object(old_pic_path)
+                        else:
+                            delete_local(old_pic_path)
                     except Exception as e:
-                        current_app.logger.warning(f"Failed to delete old picture: {e}")
+                        current_app.logger.warning(
+                            f"Failed to delete old picture after upload: {e}"
+                        )
 
-                filename = secure_filename(file.filename)
-                unique_name = f"{uuid.uuid4().hex}_{filename}"
-                dest_path = os.path.join(UPLOAD_FOLDER, unique_name)
-                os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-                file.save(dest_path)
-                new_pic_path = dest_path
-
+            # -----------------------
+            # Persist to DB
+            # -----------------------
             query = "UPDATE User_Profile SET profile_picture_path=%s WHERE user_id=%s"
             with self.conn.cursor() as cursor:
                 cursor.execute(query, (new_pic_path, self.user_id))
             self.conn.commit()
 
-            return {"status": "success", "message": "Profile picture updated."}
+            return {
+                "status": "success",
+                "message": "Profile picture updated.",
+                "profile_picture": new_pic_path,
+            }
 
         except Exception as e:
             try:

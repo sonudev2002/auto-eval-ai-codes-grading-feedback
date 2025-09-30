@@ -35,12 +35,16 @@ logger = logging.getLogger("plagiarism_detector")
 # ----------------------------
 # Config
 # ----------------------------
+BASE_DIR = Path(__file__).resolve().parent
 DEFAULTS = {
     "checkpoint": Path(
-        "D:/mca_final_project/backend/siamese_model/siamese_plagiarism_best.pth"
+        os.getenv(
+            "SIAMESE_CHECKPOINT",
+            BASE_DIR / "siamese_model" / "siamese_plagiarism_best.pth",
+        )
     ),
-    "codebert_model": "microsoft/codebert-base",
-    "max_length": 512,
+    "codebert_model": os.getenv("CODEBERT_MODEL", "microsoft/codebert-base"),
+    "max_length": int(os.getenv("MAX_LENGTH", 512)),
     "device": torch.device("cuda" if torch.cuda.is_available() else "cpu"),
 }
 

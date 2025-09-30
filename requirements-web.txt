@@ -1,0 +1,15 @@
+cat > requirements-web.txt <<'EOF'
+Flask==3.1.0
+Flask-Cors==4.0.0
+Flask-Login==0.6.3
+gunicorn==23.0.0
+mysql-connector-python==9.3.0
+requests==2.32.3
+python-dotenv==1.1.0
+Jinja2==3.1.6
+openai==1.79.0
+boto3==1.29.0
+pandas==2.2.3
+numpy==2.3.3
+tqdm==4.67.1
+EOF

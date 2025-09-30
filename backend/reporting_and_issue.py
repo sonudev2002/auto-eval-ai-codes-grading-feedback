@@ -3,6 +3,7 @@ import uuid
 from typing import Dict, Any, List, cast
 from werkzeug.utils import secure_filename
 from backend.db import get_connection
+from storage import upload_fileobj, make_key_for_file
 
 # ----------------------------
 # Config
@@ -41,14 +42,11 @@ def submit_issue(
             for screenshot_file in screenshot_files:
                 if screenshot_file and screenshot_file.filename.strip() != "":
                     if allowed_file(screenshot_file.filename):
-                        filename = f"{uuid.uuid4().hex}_{secure_filename(screenshot_file.filename)}"
-                        filepath = os.path.join(UPLOAD_FOLDER, filename)
-                        screenshot_file.save(filepath)
-
+                        key = make_key_for_file(screenshot_file)
+                        url = upload_fileobj(screenshot_file.stream, key)
                         cursor.execute(
-                            """INSERT INTO Screenshots (issue_id, screenshot_path)
-                               VALUES (%s, %s)""",
-                            (issue_id, filepath),
+                            """INSERT INTO Screenshots (issue_id, screenshot_path) VALUES (%s, %s)""",
+                            (issue_id, url),
                         )
                     else:
                         return {

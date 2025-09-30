@@ -44,28 +44,19 @@ hf_logging.set_verbosity_error()
 # ----------------------------
 # Configuration (edit as needed)
 # ----------------------------
+BASE_DIR = Path(__file__).resolve().parent
 DEFAULTS = {
-    "data_root": Path("D:/mca_final_project/backend/siamese_model/IR-Plag-Dataset"),
-    "preprocessed_csv": Path(
-        "D:/mca_final_project/backend/siamese_model/preprocessed_java_code.csv"
+    "checkpoint": Path(
+        os.getenv(
+            "SIAMESE_CHECKPOINT",
+            BASE_DIR / "siamese_model" / "siamese_plagiarism_best.pth",
+        )
     ),
-    "pairs_csv": Path(
-        "D:/mca_final_project/backend/siamese_model/code_pairs_dataset.csv"
-    ),
-    "embeddings_pt": Path("D:/mca_final_project/backend/siamese_model/embeddings.pt"),
-    "model_out": Path(
-        "D:/mca_final_project/backend/siamese_model/siamese_plagiarism.pth"
-    ),
-    "best_out": Path(
-        "D:/mca_final_project/backend/siamese_model/siamese_plagiarism_best.pth"
-    ),
-    "codebert_model": "microsoft/codebert-base",
-    "seed": 42,
-    "batch_size_embed": 8,
-    "batch_size_train": 32,
-    "n_splits": 5,
-    "max_length": 512,
+    "codebert_model": os.getenv("CODEBERT_MODEL", "microsoft/codebert-base"),
+    "max_length": int(os.getenv("MAX_LENGTH", 512)),
+    "device": torch.device("cuda" if torch.cuda.is_available() else "cpu"),
 }
+
 
 # ----------------------------
 # Logging and seeding
