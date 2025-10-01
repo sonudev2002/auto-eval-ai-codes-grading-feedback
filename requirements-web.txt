@@ -1,56 +1,36 @@
-##############################
-# 🌐 Flask & Web Server
-##############################
-Flask==3.0.3
-Flask-Cors==4.0.1
+# Web service requirements - keep this slim
+Flask==3.1.0
 gunicorn==23.0.0
-fastapi==0.115.0
-fastapi-mail==1.4.1
+python-dotenv==1.1.0
+Flask-Cors==4.0.0
+Flask-Login==0.6.3
+Werkzeug==3.1.3
+Jinja2==3.1.6
+itsdangerous==2.2.0
 
-##############################
-# 🗄️ Database & ORM
-##############################
-mysql-connector-python==9.0.0
-SQLAlchemy==2.0.31
+# Database drivers / mysql
+mysql-connector-python==9.3.0
+mysqlclient==2.2.7
 
-##############################
-# ⚙️ Environment & Config
-##############################
-python-dotenv==1.0.1
+# Request/HTTP helpers
+requests==2.32.3
+urllib3==2.4.0
+certifi==2025.1.31
+idna==3.10
+charset-normalizer==3.4.1
 
-##############################
-# ⏰ Scheduling / Async
-##############################
+# Small utilities your app imports at boot
+python-dotenv==1.1.0
+user-agents==2.2.0
+ua-parser==1.0.1
+ua-parser-builtins==0.18.0.post1
+psutil==5.9.4
+
+# App-monitoring / scheduling used server-side
 APScheduler==3.11.0
 
-##############################
-# 🧠 AI / ML Libraries
-##############################
-torch==2.4.0
-transformers==4.44.2
-scikit-learn==1.5.2
-openai==1.44.0
-
-##############################
-# 🧰 Utilities & Tools
-##############################
-requests==2.32.3
-psutil==6.0.0
-pandas==2.2.3
-numpy==1.26.4
-tqdm==4.66.4
-joblib==1.4.2
-ujson==5.10.0
-user-agents==2.2.0
-
-##############################
-# 🧾 Data Validation / Typing
-##############################
-pydantic==2.9.2
-annotated-types==0.7.0
-
-##############################
-# ☁️ Cloud / Storage / Logging
-##############################
-boto3==1.35.33
-loguru==0.7.2
+# Optional lightweight libs used by web code
+pydantic==2.11.3
+typing_extensions==4.13.2
+click==8.1.8
+blinker==1.9.0
