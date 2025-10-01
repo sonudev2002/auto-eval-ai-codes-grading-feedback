@@ -3,7 +3,7 @@ import uuid
 from typing import Dict, Any, List, cast
 from werkzeug.utils import secure_filename
 from backend.db import get_connection
-from storage import upload_fileobj, make_key_for_file
+from backend.storage import upload_fileobj, make_key_for_file
 
 # ----------------------------
 # Config

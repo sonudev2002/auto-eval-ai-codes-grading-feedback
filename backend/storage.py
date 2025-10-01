@@ -1,4 +1,3 @@
-cat > storage.py << "EOF"
 import os
 import boto3
 from werkzeug.utils import secure_filename
@@ -46,6 +45,3 @@ def delete_s3_key(url_or_key):
         key = url_or_key
     if key:
         s3.delete_object(Bucket=S3_BUCKET, Key=key)
-
-
-EOF

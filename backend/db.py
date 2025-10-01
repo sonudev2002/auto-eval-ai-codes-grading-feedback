@@ -1,17 +1,28 @@
-cat > db.py << "EOF"
 import os
 import mysql.connector
+from mysql.connector import Error
+from dotenv import load_dotenv
+
+# Load .env if running locally
+load_dotenv()
 
 
 def get_connection():
-    return mysql.connector.connect(
-        user=os.getenv("DB_USER", "root"),
-        password=os.getenv("DB_PASSWORD", ""),
-        host=os.getenv("DB_HOST", "localhost"),
-        database=os.getenv("DB_NAME", "mca_project"),
-        port=int(os.getenv("DB_PORT", 3306)),
-        connection_timeout=10,
-    )
+    """
+    Returns a MySQL connection using environment variables.
+    Compatible with Railway and Render.
+    """
+    try:
+        connection = mysql.connector.connect(
+            host=os.getenv("MYSQLHOST", "localhost"),
+            user=os.getenv("MYSQLUSER", "root"),
+            password=os.getenv("MYSQLPASSWORD", ""),
+            database=os.getenv("MYSQLDATABASE", "mca_project"),
+            port=int(os.getenv("MYSQLPORT", 3306)),
+        )
 
-
-EOF
+        if connection.is_connected():
+            return connection
+    except Error as e:
+        print(f"[DB ERROR] MySQL connection failed: {e}")
+        raise
