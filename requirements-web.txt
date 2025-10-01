@@ -26,3 +26,4 @@ APScheduler==3.11.0
 fastapi==0.115.0
 pydantic==2.9.2
 boto3==1.35.33
+flask-cors==4.0.1
