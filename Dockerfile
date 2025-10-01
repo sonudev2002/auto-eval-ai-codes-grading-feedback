@@ -1,14 +1,28 @@
-New-Item -Path "Dockerfile" -ItemType File -Force | Out-Null
-Set-Content -Path "Dockerfile" -Value @"
+# --- Base Image ---
 FROM python:3.10-slim
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+
+# --- Set Working Directory ---
 WORKDIR /app
-RUN apt-get update && apt-get install -y curl ca-certificates && rm -rf /var/lib/apt/lists/*
-COPY requirements-web.txt .
-RUN pip install --upgrade pip
-RUN pip install -r requirements-web.txt
-COPY . /app
+
+# --- Install System Dependencies ---
+RUN apt-get update && apt-get install -y \
+    clang-format \
+    openjdk-21-jre-headless \
+    curl \
+ && rm -rf /var/lib/apt/lists/*
+
+# --- Copy Project Files ---
+COPY . .
+
+# --- Install Python Dependencies ---
+RUN pip install --no-cache-dir -r requirements-web.txt
+
+# --- Set Environment Variables ---
+ENV PYTHONUNBUFFERED=1 \
+    PORT=10000
+
+# --- Expose Port ---
 EXPOSE 10000
-CMD ["gunicorn", "app:app", "--workers", "4", "--worker-class", "gthread", "--bind", "0.0.0.0:$PORT"]
-"@
+
+# --- Start App ---
+CMD gunicorn app:app --bind 0.0.0.0:$PORT --workers=4 --timeout=120
