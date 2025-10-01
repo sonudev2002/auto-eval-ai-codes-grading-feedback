@@ -10,7 +10,7 @@ itsdangerous==2.2.0
 
 # Database drivers / mysql
 mysql-connector-python==9.3.0
-mysqlclient==2.2.7
+
 
 # Request/HTTP helpers
 requests==2.32.3
