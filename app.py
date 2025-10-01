@@ -115,18 +115,13 @@ os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
 
 @app.route("/")
-def health():
-    return "OK", 200
-
-
-@app.route("/")
-def home():
-    return "Server is Live ✅"
+def index():
+    return render_template("index.html")
 
 
 @app.route("/healthz")
 def health_check():
-    return {"status": "ok"}, 200
+    return {"status": "ok", "message": "Healthy"}, 200
 
 
 @app.route("/uploads/<filename>")
@@ -146,9 +141,6 @@ def inject_user_role():
 
 
 # ------------------ Page Routes ------------------ #
-@app.route("/")
-def index():
-    return render_template("index.html")
 
 
 # ------------------ Role-Based Dashboard ------------------ #
