@@ -10,12 +10,13 @@ RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
     pkg-config \
+    libssl-dev \
     default-libmysqlclient-dev \
     python3-dev \
     clang-format \
     openjdk-21-jre-headless \
     curl \
- && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
 # --- Upgrade pip ---
 RUN pip install --upgrade pip setuptools wheel
@@ -34,4 +35,4 @@ ENV PYTHONUNBUFFERED=1 \
 EXPOSE 10000
 
 # --- Start App ---
-CMD gunicorn app:app --bind 0.0.0.0:$PORT --workers=4 --timeout=120
+CMD gunicorn app:app --bind 0.0.0.0:$PORT --workers=2 --timeout=180
