@@ -1,277 +1,420 @@
-{% include 'partials/header.html' %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Student Dashboard</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-<style>
-body{font-family:'Segoe UI',Tahoma,Verdana,sans-serif;background:#f8f9fa;}
-.dashboard-container{max-width:1200px;margin:20px auto;padding:20px;background:#fff;border-radius:10px;box-shadow:0 0 10px rgba(0,0,0,.05);}
-.tab-btn{padding:10px 20px;border:none;cursor:pointer;margin-right:5px;border-radius:6px;}
-.tab-btn.active{background:#007bff;color:#fff;}
-.tab-content{display:none}.tab-content.active{display:block}
-.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px;}
-.card{background:#e9f5ff;padding:20px;border-radius:12px;box-shadow:0 4px 6px rgba(0,0,0,.1);transition:.2s}.card:hover{transform:translateY(-5px);}
-.table-container{overflow-x:auto;max-height:500px;overflow-y:auto}
-.repo-assignments-card{display:none;margin-top:20px;background:#f1f9ff;padding:20px;border-radius:10px;max-height:500px;overflow-y:auto;box-shadow:0 0 10px rgba(0,0,0,.1);}
-.notification-bell{position:relative;cursor:pointer;font-size:20px;float:right;}
-.notification-bell .badge{position:absolute;top:-5px;right:-8px;background:red;color:#fff;border-radius:50%;padding:2px 6px;font-size:12px;}
-#notifDropdown{display:none;position:absolute;right:20px;top:60px;background:#fff;border:1px solid #ddd;width:250px;box-shadow:0 2px 8px rgba(0,0,0,.2);z-index:9999;border-radius:6px;}
-#notifDropdown ul{list-style:none;margin:0;padding:0;max-height:200px;overflow-y:auto}
-#notifDropdown li{padding:10px;border-bottom:1px solid #eee;font-size:14px;}
-.toast{visibility:hidden;min-width:250px;background:#333;color:#fff;border-radius:6px;padding:10px;position:fixed;z-index:10000;right:20px;bottom:20px;font-size:14px;opacity:0;transition:opacity .5s,bottom .5s;}
-.toast.show{visibility:visible;opacity:1;bottom:40px;}
-#notifDropdown ul {
-  list-style:none;
-  margin:0;
-  padding:0;
-  max-height:300px;     /* dropdown is scrollable */
-  overflow-y:auto;
-}
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Student Dashboard</title>
 
-#notifFeed {
-  max-height:400px;     /* feed is scrollable */
-  overflow-y:auto;
-  padding:0;
-  list-style:none;
-}
+  <!-- Bootstrap & Fonts -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-#notifFeed li {
-  padding:10px;
-  border-bottom:1px solid #eee;
-  transition:background 0.2s;
-}
+  <style>
+    :root {
+      --primary: #4B0082;
+      --secondary: #00BFA6;
+      --accent: #f97316;
+      --bg: #f9fafb;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --card: #fff;
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      --radius: 10px;
+    }
 
-#notifFeed li.unread {
-  background:#eaf3ff;   /* light blue background */
-  font-weight:600;
-  color:#0d6efd;        /* Bootstrap primary blue */
-}
+    /* 📄 Layout */
+    body {
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      width: 100%;
+      background: var(--bg);
+      font-family: 'Inter', sans-serif;
+      color: var(--text);
+      overflow-x: hidden;
+    }
 
-#notifFeed li.read {
-  background:#fff;
-  color:#333;
-}
+    main {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      width: 100%;
+      padding: 120px 0 100px 0; /* header + footer space */
+    }
 
+    .dashboard-container {
+      width: 95%;
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 20px 40px;
+      background: var(--bg);
+    }
 
-</style>
+    footer {
+      margin-top: auto;
+      width: 100%;
+      text-align: center;
+    }
+
+    /* 🧭 Header & Notifications */
+    h2 {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: var(--primary);
+    }
+
+    .notification-bell {
+      position: relative;
+      cursor: pointer;
+      font-size: 24px;
+      color: var(--primary);
+      transition: 0.2s;
+    }
+
+    .notification-bell:hover { transform: scale(1.1); }
+
+    .notification-bell .badge {
+      position: absolute;
+      top: -6px; right: -8px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 50%;
+      padding: 2px 6px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    #notifDropdown {
+      display: none;
+      position: absolute;
+      right: 20px;
+      top: 60px;
+      background: #fff;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      width: 260px;
+      z-index: 10;
+    }
+
+    #notifDropdown ul {
+      list-style: none;
+      margin: 0;
+      padding: 6px 0;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    #notifDropdown li {
+      padding: 10px 14px;
+      font-size: 14px;
+      color: var(--muted);
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+    }
+
+    /* 🧭 Tabs */
+    .tabs {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      border: none;
+      background: #eef2ff;
+      color: var(--primary);
+      padding: 10px 16px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-weight: 500;
+      transition: 0.2s;
+      box-shadow: var(--shadow);
+    }
+
+    .tab-btn.active {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .tab-content {
+      display: none;
+      margin-top: 20px;
+      animation: fadeIn 0.3s ease-in-out;
+    }
+
+    .tab-content.active { display: block; }
+
+    @keyframes fadeIn {
+      from {opacity: 0; transform: translateY(10px);}
+      to {opacity: 1; transform: translateY(0);}
+    }
+
+    /* 📁 Card Layout */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      text-align: left;
+      transition: 0.2s;
+    }
+
+    .card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 10px;
+    }
+
+    /* 📋 Tables */
+    .table-container {
+      overflow-x: auto;
+      background: #fff;
+      padding: 16px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #eef2ff; color: var(--primary); font-weight: 600; text-align: center; }
+    td, th { padding: 10px 12px; text-align: center; }
+
+    tr:nth-child(even){ background:#fafafa; }
+    tr:hover{ background:#f5f7ff; }
+
+    .repo-assignments-card {
+      display: none;
+      margin-top: 20px;
+      background: #fff;
+      padding: 20px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    /* 📢 Notification Feed */
+    .card ul {
+      list-style: none;
+      padding: 0;
+      margin: 10px 0 0 0;
+    }
+    .card ul li { margin-bottom: 6px; color: var(--text); }
+  </style>
 </head>
+
 <body>
-<div class="dashboard-container">
-  <h2 class="mb-4">📊 Student Dashboard 
-    <span class="notification-bell" onclick="toggleDropdown()">🔔<span class="badge" id="notifCount">3</span></span>
-  </h2>
-  <div id="notifDropdown"><ul id="notifList"></ul></div>
-  <div id="notifToast" class="toast"></div>
 
-  <!-- Tabs -->
-  <div class="tabs mb-3">
-    <button class="tab-btn active" onclick="openTab('repositories',this)">📂 Repositories</button>
-    <button class="tab-btn" onclick="openTab('assignments',this)">📘 All Assignments</button>
-  </div>
+  {% include 'partials/header.html' %}
 
-  <!-- Repositories -->
-  <div id="repositories" class="tab-content active">
-    {% if repo_detail %}
-    <div id="repoGrid" class="card-grid">
-      {% for repo in repo_detail %}
-      <div class="card">
-        <div class="card-title">{{ repo.title }}</div>
-        <p><strong>Repo ID:</strong> {{ repo.repository_id }}</p>
-        <p><strong>Created By:</strong> {{ repo.created_by_name }}</p>
-        <p><strong>Questions:</strong> {{ repo.question_count }}</p>
-        <button class="btn btn-primary w-100" onclick="loadRepoAssignments({{ repo.repository_id }},'{{ repo.title|e }}')">View Assignments</button>
+  <main>
+    <div class="dashboard-container">
+      <h2>📊 Student Dashboard 
+        <span class="notification-bell" onclick="toggleDropdown()">🔔<span class="badge" id="notifCount">3</span></span>
+      </h2>
+      <div id="notifDropdown"><ul id="notifList"></ul></div>
+      <div id="notifToast" class="toast"></div>
+
+      <!-- Tabs -->
+      <div class="tabs mb-3">
+        <button class="tab-btn active" onclick="openTab('repositories',this)">📂 Repositories</button>
+        <button class="tab-btn" onclick="openTab('assignments',this)">📘 All Assignments</button>
       </div>
-      {% endfor %}
-    </div>
-    {% else %}<p class="text-muted">No repositories available.</p>{% endif %}
 
-    <div id="repoAssignmentsCard" class="repo-assignments-card">
-      <button class="btn btn-secondary mb-3" onclick="backToRepos()">← Back</button>
-      <h5 id="repoAssignmentsTitle"></h5>
-      <div id="repoAssignmentsTable" class="table-container"></div>
-    </div>
-  </div>
+      <!-- Repositories -->
+      <div id="repositories" class="tab-content active">
+        {% if repo_detail %}
+        <div id="repoGrid" class="card-grid">
+          {% for repo in repo_detail %}
+          <div class="card">
+            <div class="card-title">{{ repo.title }}</div>
+            <p><strong>Repo ID:</strong> {{ repo.repository_id }}</p>
+            <p><strong>Created By:</strong> {{ repo.created_by_name }}</p>
+            <p><strong>Questions:</strong> {{ repo.question_count }}</p>
+            <button class="btn btn-primary w-100" onclick="loadRepoAssignments({{ repo.repository_id }},'{{ repo.title|e }}')">View Assignments</button>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+          <p class="text-muted">No repositories available.</p>
+        {% endif %}
 
-  <!-- Assignments -->
-  <div id="assignments" class="tab-content">
-    {% if assignments %}
-    <div class="table-container">
-      <table class="table table-hover table-bordered align-middle">
-        <thead class="table-primary"><tr><th>Repo ID</th><th>Assignment ID</th><th>Title</th><th>Instructor</th><th>Difficulty</th><th>Due Date</th><th>Status</th><th>Action</th></tr></thead>
-        <tbody>
-        {% for a in assignments %}
-          <tr>
-            <td>{{ a.repository_id }}</td><td>{{ a.assignment_id }}</td><td>{{ a.title }}</td><td>{{ a.instructor_name }}</td><td>{{ a.difficulty_level }}</td>
-            <td>{% if a.due_date < now %}<span class="text-danger fw-bold">{{ a.due_date.strftime('%d %b %Y') }}</span>{% else %}{{ a.due_date.strftime('%d %b %Y') }}{% endif %}</td>
-            <td>Not Complete</td>
-            <td><a href="/code_editor/{{ a.assignment_id }}" class="btn btn-success btn-sm w-100">Submit</a></td>
-          </tr>
-        {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% else %}<p class="text-muted">No assignments available.</p>{% endif %}
-  </div>
+        <div id="repoAssignmentsCard" class="repo-assignments-card">
+          <button class="btn btn-secondary mb-3" onclick="backToRepos()">← Back</button>
+          <h5 id="repoAssignmentsTitle"></h5>
+          <div id="repoAssignmentsTable" class="table-container"></div>
+        </div>
+      </div>
 
-  <!-- Feed -->
-  <div class="card mt-4"><h5>Recent Notifications</h5><ul id="notifFeed"><li>📢 Assignment 2 uploaded</li><li>✅ You scored 85% in Assignment 1</li><li>⚠️ Server maintenance tonight</li></ul></div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-function openTab(id,btn){
-  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  btn.classList.add('active');
-}
-
-function loadRepoAssignments(rid,title){
-  fetch(`/fetch_assignments_for_student?repo_id=${encodeURIComponent(rid)}`)
-    .then(r=>r.json())
-    .then(data=>{
-      let c=document.getElementById('repoAssignmentsTable');
-      if(!data||!data.length){
-        c.innerHTML='<p class="text-muted">No assignments found.</p>'
-      }else{
-        let h='<table class="table table-hover table-bordered align-middle"><thead class="table-secondary"><tr><th>ID</th><th>Title</th><th>Instructor</th><th>Difficulty</th><th>Due</th><th>Status</th><th>Action</th></tr></thead><tbody>';
-        data.forEach(a=>{
-          h+=`<tr>
-                <td>${a.assignment_id}</td>
-                <td>${escapeHtml(a.title)}</td>
-                <td>${escapeHtml(a.instructor_name)}</td>
-                <td>${escapeHtml(a.difficulty_level)}</td>
-                <td>${escapeHtml(a.due_date)}</td>
+      <!-- Assignments -->
+      <div id="assignments" class="tab-content">
+        {% if assignments %}
+        <div class="table-container">
+          <table class="table table-hover table-bordered align-middle">
+            <thead class="table-primary">
+              <tr><th>Repo ID</th><th>Assignment ID</th><th>Title</th><th>Instructor</th><th>Difficulty</th><th>Due Date</th><th>Status</th><th>Action</th></tr>
+            </thead>
+            <tbody>
+              {% for a in assignments %}
+              <tr>
+                <td>{{ a.repository_id }}</td>
+                <td>{{ a.assignment_id }}</td>
+                <td>{{ a.title }}</td>
+                <td>{{ a.instructor_name }}</td>
+                <td>{{ a.difficulty_level }}</td>
+                <td>
+                  {% if a.due_date < now %}
+                    <span class="text-danger fw-bold">{{ a.due_date.strftime('%d %b %Y') }}</span>
+                  {% else %}
+                    {{ a.due_date.strftime('%d %b %Y') }}
+                  {% endif %}
+                </td>
                 <td>Not Complete</td>
-                <td><a href="/code_editor/${encodeURIComponent(a.assignment_id)}" class="btn btn-success btn-sm w-100">Submit</a></td>
-              </tr>`;
+                <td><a href="/code_editor/{{ a.assignment_id }}" class="btn btn-success btn-sm w-100">Submit</a></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+          <p class="text-muted">No assignments available.</p>
+        {% endif %}
+      </div>
+
+      <!-- Feed -->
+      <div class="card mt-4">
+        <h5>Recent Notifications</h5>
+        <ul id="notifFeed"></ul>
+      </div>
+    </div>
+  </main>
+
+  {% include 'partials/footer.html' %}
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    function openTab(id, btn) {
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      btn.classList.add('active');
+    }
+
+    function escapeHtml(s){
+      return typeof s!=='string'?s:s.replace(/&/g,'&amp;')
+                                .replace(/</g,'&lt;')
+                                .replace(/>/g,'&gt;')
+                                .replace(/"/g,'&quot;')
+                                .replace(/'/g,'&#039;');
+    }
+
+    function loadRepoAssignments(rid, title){
+      fetch(`/fetch_assignments_for_student?repo_id=${encodeURIComponent(rid)}`)
+        .then(r=>r.json())
+        .then(data=>{
+          let c=document.getElementById('repoAssignmentsTable');
+          if(!data||!data.length){
+            c.innerHTML='<p class="text-muted">No assignments found.</p>'
+          }else{
+            let h='<table class="table table-hover table-bordered align-middle"><thead class="table-secondary"><tr><th>ID</th><th>Title</th><th>Instructor</th><th>Difficulty</th><th>Due</th><th>Status</th><th>Action</th></tr></thead><tbody>';
+            data.forEach(a=>{
+              h+=`<tr>
+                    <td>${a.assignment_id}</td>
+                    <td>${escapeHtml(a.title)}</td>
+                    <td>${escapeHtml(a.instructor_name)}</td>
+                    <td>${escapeHtml(a.difficulty_level)}</td>
+                    <td>${escapeHtml(a.due_date)}</td>
+                    <td>Not Complete</td>
+                    <td><a href="/code_editor/${encodeURIComponent(a.assignment_id)}" class="btn btn-success btn-sm w-100">Submit</a></td>
+                  </tr>`;
+            });
+            c.innerHTML=h+'</tbody></table>';
+          }
+          document.getElementById('repoAssignmentsTitle').innerText=`Assignments in Repository: ${title}`;
+          document.getElementById('repoAssignmentsCard').style.display='block';
+          document.getElementById('repoGrid').style.display='none';
+        })
+        .catch(e=>{
+          console.error(e);
+          document.getElementById('repoAssignmentsTable').innerHTML='<p class="text-danger">Failed to load assignments.</p>';
         });
-        c.innerHTML=h+'</tbody></table>';
-      }
-      document.getElementById('repoAssignmentsTitle').innerText=`Assignments in Repository: ${title}`;
-      document.getElementById('repoAssignmentsCard').style.display='block';
-      document.getElementById('repoGrid').style.display='none';
-    })
-    .catch(e=>{
-      console.error(e);
-      document.getElementById('repoAssignmentsTable').innerHTML='<p class="text-danger">Failed to load assignments.</p>';
+    }
+
+    function backToRepos(){
+      document.getElementById('repoAssignmentsCard').style.display='none';
+      document.getElementById('repoGrid').style.display='grid';
+    }
+
+    function toggleDropdown(){
+      let d=document.getElementById('notifDropdown');
+      d.style.display=d.style.display==='block'?'none':'block';
+    }
+
+    // Notifications
+    let lastCount = 0;
+    document.addEventListener("DOMContentLoaded", () => {
+      const userId = {{ session['user']['user_id'] }};
+      const userRole = "{{ session['user']['role']|lower }}";
+      loadNotifications(userId, userRole);
+      setInterval(() => loadNotifications(userId, userRole), 30000);
     });
-}
 
-function backToRepos(){
-  document.getElementById('repoAssignmentsCard').style.display='none';
-  document.getElementById('repoGrid').style.display='grid';
-}
+    function loadNotifications(userId, userRole){
+      fetch(`/notifications/feed/${userId}?role=${userRole}&limit=100`)
+        .then(r => r.json())
+        .then(res => {
+          if (!res || res.status === "error") return;
+          const data = res.feed || [];
+          let notifList = document.getElementById("notifList");
+          let notifFeed = document.getElementById("notifFeed");
+          notifList.innerHTML = "";
+          notifFeed.innerHTML = "";
 
-function escapeHtml(s){
-  return typeof s!=='string'?s:s.replace(/&/g,'&amp;')
-                              .replace(/</g,'&lt;')
-                              .replace(/>/g,'&gt;')
-                              .replace(/"/g,'&quot;')
-                              .replace(/'/g,'&#039;');
-}
+          let unreadCount = data.filter(n => n.status === "unread").length;
+          document.getElementById("notifCount").innerText = unreadCount;
 
-function toggleDropdown(){
-  let d=document.getElementById('notifDropdown');
-  d.style.display=d.style.display==='block'?'none':'block';
-}
+          if (unreadCount > lastCount && data.length > 0) {
+            alert("📢 " + data[0].message);
+          }
+          lastCount = unreadCount;
 
-function showToast(m){
-  let t=document.getElementById('notifToast');
-  t.innerHTML=m;
-  t.className='toast show';
-  setTimeout(()=>{t.className=t.className.replace('show','');},4000);
-}
+          data.forEach(n => {
+            let li = document.createElement("li");
+            li.innerHTML = `${escapeHtml(n.message)} <small class="text-muted">(${n.source})</small>`;
+            li.classList.add(n.status === "unread" ? "unread" : "read");
+            if (n.source === "notification") li.onclick = () => markNotificationRead(n.notification_id, userId);
+            notifList.appendChild(li);
 
-// ---------------------------
-// ✅ Real notification loading
-// ---------------------------
-let lastCount = 0;
-document.addEventListener("DOMContentLoaded", () => {
-  const userId = {{ session['user']['user_id'] }};
-const userRole = "{{ session['user']['role']|lower }}";
-loadNotifications(userId, userRole);
-setInterval(() => loadNotifications(userId, userRole), 30000);
-});
+            let feedLi = document.createElement("li");
+            feedLi.innerHTML = li.innerHTML;
+            feedLi.classList.add(n.status === "unread" ? "unread" : "read");
+            if (n.source === "notification" && n.status === "unread") feedLi.onclick = () => markNotificationRead(n.notification_id, userId);
+            notifFeed.appendChild(feedLi);
+          });
+        })
+        .catch(e => console.error("Error loading notifications:", e));
+    }
 
-function toggleDropdown(){
-  let d=document.getElementById('notifDropdown');
-  d.style.display=d.style.display==='block'?'none':'block';
-}
-
-function loadNotifications(userId, userRole){
-  fetch(`/notifications/feed/${userId}?role=${userRole}&limit=100`)
-    .then(r => r.json())
-    .then(res => {
-      if (!res || res.status === "error") return;
-
-      const data = res.feed || [];
-      let notifList = document.getElementById("notifList");
-      let notifFeed = document.getElementById("notifFeed");
-      notifList.innerHTML = "";
-      notifFeed.innerHTML = "";
-
-      let unreadCount = data.filter(n => n.status === "unread").length;
-      document.getElementById("notifCount").innerText = unreadCount;
-
-      if (unreadCount > lastCount && data.length > 0) {
-        let latest = data[0].message;
-        alert("📢 " + latest);
-      }
-      lastCount = unreadCount;
-
-      data.forEach(n => {
-        // dropdown item
-        let li = document.createElement("li");
-        li.innerHTML = `${escapeHtml(n.message)} <small class="text-muted">(${n.source})</small>`;
-        li.classList.add(n.status === "unread" ? "unread" : "read");
-
-        if (n.source === "notification") {
-          // only personal notifications are markable as read
-          li.style.cursor = "pointer";
-          li.onclick = () => markNotificationRead(n.notification_id, userId);
-        }
-        notifList.appendChild(li);
-
-        // feed item
-        let feedLi = document.createElement("li");
-        feedLi.innerHTML = li.innerHTML;
-        feedLi.classList.add(n.status === "unread" ? "unread" : "read");
-
-        if (n.source === "notification" && n.status === "unread") {
-          feedLi.style.cursor = "pointer";
-          feedLi.onclick = () => markNotificationRead(n.notification_id, userId);
-        }
-        notifFeed.appendChild(feedLi);
-      });
-    })
-    .catch(e => console.error("Error loading notifications:", e));
-}
-
-
-function markNotificationRead(notificationId,userId){
-  fetch(`/notifications/mark_read/${notificationId}`, {method:"PUT"})
-    .then(r=>r.json())
-    .then(res=>{
-      if(res.status==="success") loadNotifications(userId);
-      else console.error("Mark read failed:",res.error);
-    })
-    .catch(e=>console.error("Error marking notification read:",e));
-}
-
-function escapeHtml(s){
-  return typeof s!=='string'?s:s.replace(/&/g,'&amp;')
-                              .replace(/</g,'&lt;')
-                              .replace(/>/g,'&gt;')
-                              .replace(/"/g,'&quot;')
-                              .replace(/'/g,'&#039;');
-}
-
-
-</script>
-
+    function markNotificationRead(notificationId, userId){
+      fetch(`/notifications/mark_read/${notificationId}`, {method:"PUT"})
+        .then(r=>r.json())
+        .then(res=>{
+          if(res.status==="success") loadNotifications(userId);
+          else console.error("Mark read failed:",res.error);
+        })
+        .catch(e=>console.error("Error marking notification read:",e));
+    }
+  </script>
 </body>
 </html>
-{% include 'partials/footer.html' %}

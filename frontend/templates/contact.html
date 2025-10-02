@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contact | AutoEval by Sonu Singh Dev</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased">
+
+ <header class="w-full bg-gradient-to-r from-indigo-600 via-teal-400 to-cyan-500 text-white">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="logo" class="h-12 w-12 rounded-full object-cover border-2 border-white/30">
+        <div>
+          <div class="font-semibold text-lg">AutoEval</div>
+          <div class="text-xs opacity-90">AI Code Grading • Sonu Singh Dev</div>
+        </div>
+      </div>
+
+      <nav class="hidden md:flex gap-6 items-center">
+        <a href="/" class="hover:underline">Home</a>
+        
+        <a href="/about" class="hover:underline">About</a>
+        <a href="/privacy" class="hover:underline">Privacy</a>
+        <a href="https://github.com/sonudev2002" target="_blank"
+           class="ml-3 px-3 py-2 bg-white/10 rounded-md hover:bg-white/20">GitHub</a>
+      </nav>
+
+      <div class="md:hidden">
+        <button onclick="alert('Use desktop for full layout')" class="px-3 py-2 rounded bg-white/10">Menu</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-6 py-16">
+
+    <!-- Intro -->
+    <section class="text-center mb-16">
+      <h1 class="text-4xl font-extrabold text-teal-600 mb-3">Get in Touch</h1>
+      <p class="text-slate-600 max-w-2xl mx-auto">
+        Have a question, feedback, or opportunity? I’d love to hear from you!  
+        Whether it’s project collaboration, hiring discussions, or technical talks — feel free to connect.
+      </p>
+    </section>
+
+    <!-- Grid Layout -->
+    <section class="grid md:grid-cols-2 gap-10 items-start">
+
+     
+      <!-- Right: Contact Info -->
+      <div class="space-y-8 reveal" data-reveal>
+        <div>
+          <h2 class="text-2xl font-semibold mb-3">📞 Contact Information</h2>
+          <p class="text-slate-600">
+            Let’s connect on any of these platforms.  
+            I typically respond within 24 hours.
+          </p>
+          <ul class="mt-5 space-y-3 text-slate-700">
+            <li>📧 <strong>Email:</strong>
+              <a href="mailto:sonudev2002@gmail.com" class="text-teal-600 hover:underline">sonudev2002@gmail.com</a>
+            </li>
+            <li>💻 <strong>GitHub:</strong>
+              <a href="https://github.com/sonudev2002" target="_blank" class="text-teal-600 hover:underline">sonudev2002</a>
+            </li>
+            <li>💼 <strong>LinkedIn:</strong>
+              <a href="https://linkedin.com/in/sonudev2002" target="_blank" class="text-teal-600 hover:underline">linkedin.com/in/sonudev2002</a>
+            </li>
+          </ul>
+        </div>
+
+    
+      </div>
+    </section>
+
+  </main>
+
+  {% include 'partials/footer.html' %}
+
+  <!-- JS for animation & dummy submit -->
+  <script>
+    // Reveal animation
+    const els = document.querySelectorAll('.reveal');
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('opacity-100','translate-y-0');
+          io.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.15 });
+
+    els.forEach(el => {
+      el.classList.add('opacity-0','translate-y-4','transition-all','duration-700');
+      io.observe(el);
+    });
+
+    // Fake form handler (until backend email integration)
+    const form = document.getElementById('contactForm');
+    const msg = document.getElementById('formMessage');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      msg.classList.remove('hidden');
+      msg.textContent = "✅ Thanks for reaching out! Your message has been recorded.";
+      form.reset();
+    });
+  </script>
+
+</body>
+</html>

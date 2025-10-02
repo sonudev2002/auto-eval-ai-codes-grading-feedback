@@ -579,7 +579,7 @@ class StudentProfileData:
         perf_query = """
             SELECT average_score, completion_rate, pass_rate,
                    plagiarism_incidents, performance_band, total_assignments
-            FROM student_ferformance_analytics
+            FROM student_performance_analytics
             WHERE user_id = %s
         """
         stats_query = """

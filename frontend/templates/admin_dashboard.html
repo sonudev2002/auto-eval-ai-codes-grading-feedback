@@ -1,174 +1,574 @@
 {% include 'partials/header.html' %}
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Admin Dashboard</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css"/>
-<link href="https://cdn.jsdelivr.net/npm/prismjs/themes/prism-tomorrow.css" rel="stylesheet"/>
-<script src="https://cdn.jsdelivr.net/npm/prismjs/prism.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-python.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-java.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-c.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-cpp.min.js"></script>
-<style>
-body{margin:0;display:flex;flex-direction:column;min-height:100vh;font-family:sans-serif}
-table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background:#f4f4f4}
-button{cursor:pointer;padding:5px 10px;margin:2px}select,input{padding:4px}
-.filter-btns{margin-bottom:15px}.filter-btns button{padding:6px 12px;margin-right:8px;border:1px solid #007BFF;background:#fff;color:#007BFF;border-radius:4px}
-.filter-btns button.active{background:#007BFF;color:#fff}
-.scrollable-table{max-height:420px;overflow-y:auto;border:1px solid #ddd;margin-bottom:20px}
-.scrollable-table thead th{position:sticky;top:0;background:#f4f4f4;z-index:2}
-.tabs{display:flex;background:#007BFF;color:#fff;position:sticky;top:0;z-index:100}
-.tab-btn{flex:1;padding:12px;border:none;background:#007BFF;color:#fff;cursor:pointer;font-weight:500;transition:background .2s}
-.tab-btn:hover,.tab-btn.active{background:#0056b3}
-.tab-content{display:none;padding:20px}.tab-content.active{display:block;animation:fadeIn .3s ease}
-@keyframes fadeIn{from{opacity:0}to{opacity:1}}
-a{color:#007BFF;text-decoration:none}
-</style>
-</head>
-<body>
-<!-- 🔹 Tabs -->
-<div class="tabs">
-  <button class="tab-btn active" onclick="showMainTab('home')">🏠 Home</button>
-  <button class="tab-btn" onclick="showMainTab('grades')">📊 Grades</button>
-  <button class="tab-btn" onclick="showMainTab('lists')">📜 Lists</button>
-  <button class="tab-btn" onclick="showMainTab('system')">⚙️ System</button>
-  <button class="tab-btn" onclick="showMainTab('messages')">💬 Messages</button>
-</div>
-
-<div style="padding:20px">
-  <button onclick="exportAll()">⬇ Export ALL (ZIP)</button>
-
-  <!-- 🏠 HOME -->
-  <div id="tab-home" class="tab-content active">
-    <p>Welcome to Admin Dashboard</p>
-    <a href="{{ url_for('show_form') }}">➕ Create New Assignment</a> |
-    <a href="{{ url_for('creator_admin') }}">➕ Create Notification</a>
-
-    <h3>Reported Issues</h3>
-    <div><input id="issue-search-input" placeholder="Email/User ID"/><button onclick="searchIssues()">🔍</button><button onclick="downloadTableCSV('issues-body','issues.csv')">⬇</button></div>
-    <div class="filter-btns">
-      <button id="btn-open" class="active" onclick="filterIssues('open')">🟢 Open</button>
-      <button id="btn-other" onclick="filterIssues('other')">🟡 Other</button>
-      <button id="btn-closed" onclick="filterIssues('closed')">⚪ Closed</button>
-    </div>
-    <div class="scrollable-table">
-      <table id="issues-table"><thead><tr><th>User</th><th>Type</th><th>Description</th><th>Status</th><th>Reported</th><th>Resolved</th><th>Update</th></tr></thead><tbody id="issues-body"></tbody></table>
-    </div>
-  </div>
-
-  <!-- 📊 GRADES -->
-  <div id="tab-grades" class="tab-content">
-    <h3>Grade Distributions <button onclick="downloadChart(adminGradeChart,'grades.png')">⬇</button></h3>
-    <div class="filter-btns">
-      <button onclick="fetchOverall()">🌍 Overall</button><button onclick="fetchTrends()">📈 Trends</button>
-      <button onclick="fetchGroup('student')">👩‍🎓 Students</button><button onclick="fetchGroup('instructor')">👨‍🏫 Instructors</button>
-      <button onclick="fetchAggregate('student')">👩‍🎓 Total</button><button onclick="fetchAggregate('instructor')">👨‍🏫 Total</button>
-    </div>
-    <div><select id="roleSelect"><option value="student">Student</option><option value="instructor">Instructor</option></select>
-      <input id="searchGradeInput" placeholder="User ID/Email"/><button onclick="searchGrades()">🔍</button></div>
-    <div class="scrollable-table"><canvas id="adminGradeChart" height="150"></canvas></div>
-    <h3>Grade History</h3><div class="scrollable-table"><canvas id="gradeHistoryChart" height="150"></canvas></div>
-  </div>
-
-  <!-- 📜 LISTS -->
-  <div id="tab-lists" class="tab-content">
-    <h3>Submissions</h3>
-    <div><input id="submission-search-input" placeholder="Submission/User/Assignment"/><button onclick="searchSubmissions()">🔍</button><button onclick="downloadTableCSV('submissions-body','submissions.csv')">⬇</button></div>
-    <div class="scrollable-table">
-      <table><thead><tr><th>ID</th><th>User</th><th>Assignment</th><th>Lang</th><th>Date</th><th>Ver</th><th>Code</th><th>Eval</th></tr></thead><tbody id="submissions-body"><tr><td colspan="8">No data</td></tr></tbody></table>
-    </div>
-
-    <h3>Assignments</h3>
-    <div>
-      <select id="assignment-sort" onchange="fetchAssignments()"><option value="">Default</option><option value="repository_id">Repo ID</option></select>
-      <input id="assignment-id-input" placeholder="Assignment ID"/><button onclick="searchAssignments()">🔍</button>
-      <input id="repo-id-input" placeholder="Repo ID"/><button onclick="filterByRepo()">📂</button>
-      <button onclick="fetchAssignments(true)">⏪</button><button onclick="downloadTableCSV('assignments-body','assignments.csv')">⬇</button>
-    </div>
-    <div class="scrollable-table">
-      <table><thead><tr><th>ID</th><th>Title</th><th>Repo</th><th>Subs</th><th>Avg</th><th>Plag</th><th>Pass%</th><th>Time</th><th>Error</th><th>Editor</th><th>Upd</th><th>📊</th></tr></thead><tbody id="assignments-body"><tr><td colspan="12">No data</td></tr></tbody></table>
-    </div>
-
-    <h3>Instructors</h3>
-    <div><input id="instructor-search-input" placeholder="User ID/Email"/><button onclick="searchInstructors()">🔍</button><button onclick="downloadTableCSV('instructors-body','instructors.csv')">⬇</button>
-      <select id="score-filter" onchange="searchInstructors()"><option value="">All</option><option value="0">0</option><option value="5">5</option></select></div>
-    <div class="scrollable-table"><table><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Profile</th></tr></thead><tbody id="instructors-body"><tr><td colspan="4">No data</td></tr></tbody></table></div>
-
-    <h3>Students</h3>
-    <div><input id="student-search-input" placeholder="User ID/Email"/><button onclick="searchStudents()">🔍</button><button onclick="downloadTableCSV('students-body','students.csv')">⬇</button></div>
-    <div class="scrollable-table"><table><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Profile</th></tr></thead><tbody id="students-body"><tr><td colspan="4">No data</td></tr></tbody></table></div>
-  </div>
-
-  <!-- ⚙️ SYSTEM -->
-  <div id="tab-system" class="tab-content">
-    <h3>System Stats</h3>
-    <div><button onclick="updateSystemStats()">🔄</button><button onclick="downloadChart(gradeChart,'system_stats.png')">⬇</button><button onclick="downloadTableCSV('system-stats-body','system_stats.csv')">⬇ CSV</button></div>
-    <div class="scrollable-table"><table><thead><tr><th>Students</th><th>Instructors</th><th>Assignments</th><th>Active</th><th>Avg</th><th>Subs</th><th>New(7d)</th><th>Grades</th></tr></thead><tbody id="system-stats-body"><tr><td colspan="8">Loading...</td></tr></tbody></table></div>
-    <canvas id="gradeChart" height="100"></canvas>
-    <h3>History</h3><div class="scrollable-table"><canvas id="systemHistoryChart" height="150"></canvas></div>
-  </div>
-
-  <!-- 💬 MESSAGES -->
-  <div id="tab-messages" class="tab-content">
-    <h3>Messages</h3>
-    <div class="filter-btns"><button id="btn-broadcast" class="active" onclick="showTab('broadcast')">📢 Broadcasts</button><button id="btn-notification" onclick="showTab('notification')">🔔 Notifications</button></div>
-    <div id="notif-search" style="display:none"><input id="notif-search-input" placeholder="Email/User ID"/><button onclick="searchNotifications()">🔍</button><button onclick="downloadTableCSV('notification-body','notifications.csv')">⬇</button></div>
-    <div id="broadcast-tab" class="scrollable-table"><table><thead><tr><th>Message</th><th>Type</th><th>Mode</th><th>Created</th></tr></thead><tbody>{% for bc in broadcasts %}<tr><td>{{ bc.message }}</td><td>{{ bc.broadcast_type }}</td><td>{{ bc.broadcast_mode }}</td><td>{{ bc.created_at }}</td></tr>{% endfor %}</tbody></table></div>
-    <div id="notification-tab" class="scrollable-table" style="display:none"><table><thead><tr><th>User</th><th>Message</th><th>Mode</th><th>Type</th><th>Status</th><th>Created</th></tr></thead><tbody id="notification-body"></tbody></table></div>
-  </div>
-</div>
-
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2"></script>
-
-  <!-- ✅ YOUR FULL EXISTING SCRIPT -->
-  <script>
-    function showMainTab(tab){
-      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
-      document.querySelector(`.tab-btn[onclick="showMainTab('${tab}')"]`).classList.add('active');
-      document.getElementById(`tab-${tab}`).classList.add('active');
-    }
-    const statuses = ['OPEN','UNDER_REVIEW','IN_PROGRESS','ESCALATED','AWAITING_USER_INFO',
-                      'DELAYED','EXPECTED_7_DAYS','CONTACT_PENDING','RESOLVED','CLOSED','REJECTED'];
-
-    let gradeChart, gradeChartLarge;
-    let historyChart, gradeHistoryChart;
-
-    // ------------------ Notifications ------------------
-    let notificationsLoaded = false;
-    function showTab(tab) {
-      document.getElementById("broadcast-tab").style.display = (tab === 'broadcast') ? 'block' : 'none';
-      document.getElementById("notification-tab").style.display = (tab === 'notification') ? 'block' : 'none';
-      document.getElementById("notif-search").style.display = (tab === 'notification') ? 'block' : 'none';
-
-      document.getElementById("btn-broadcast").classList.toggle("active", tab === 'broadcast');
-      document.getElementById("btn-notification").classList.toggle("active", tab === 'notification');
-
-      if (tab === 'notification' && !notificationsLoaded) {
-        fetch('/admin/fetch_notifications?limit=50')
-          .then(res => res.json())
-          .then(data => {
-            if (data.success) {
-              renderNotifications(data.data);
-              notificationsLoaded = true;
-            } else {
-              Swal.fire("Error", data.message || "Failed to fetch notifications", "error");
-            }
-          })
-          .catch(() => Swal.fire("Error", "Network error", "error"));
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>Admin Dashboard</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/prismjs/themes/prism-tomorrow.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/prismjs/prism.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-python.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-java.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-c.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-cpp.min.js"></script>
+    <style>
+      body {
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+        font-family: sans-serif;
       }
-    }
 
-    function renderNotifications(notes) {
-      const tbody = document.getElementById("notification-body");
-      tbody.innerHTML = "";
-      notes.forEach(note => {
-        const row = `<tr>
+      footer {
+        margin-top: auto;
+        width: 100%;
+        text-align: center;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+      }
+      th {
+        background: #f4f4f4;
+      }
+      button {
+        cursor: pointer;
+        padding: 5px 10px;
+        margin: 2px;
+      }
+      select,
+      input {
+        padding: 4px;
+      }
+      .filter-btns {
+        margin-bottom: 15px;
+      }
+      .filter-btns button {
+        padding: 6px 12px;
+        margin-right: 8px;
+        border: 1px solid #007bff;
+        background: #fff;
+        color: #007bff;
+        border-radius: 4px;
+      }
+      .filter-btns button.active {
+        background: #007bff;
+        color: #fff;
+      }
+      .scrollable-table {
+        max-height: 420px;
+        overflow-y: auto;
+        border: 1px solid #ddd;
+        margin-bottom: 20px;
+      }
+      .scrollable-table thead th {
+        position: sticky;
+        top: 0;
+        background: #f4f4f4;
+        z-index: 2;
+      }
+      .tabs {
+        display: flex;
+        background: #007bff;
+        color: #fff;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+      }
+      .tab-btn {
+        flex: 1;
+        padding: 12px;
+        border: none;
+        background: #007bff;
+        color: #fff;
+        cursor: pointer;
+        font-weight: 500;
+        transition: background 0.2s;
+      }
+      .tab-btn:hover,
+      .tab-btn.active {
+        background: #0056b3;
+      }
+      .tab-content {
+        display: none;
+        padding: 20px;
+      }
+      .tab-content.active {
+        display: block;
+        animation: fadeIn 0.3s ease;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      a {
+        color: #007bff;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <!-- 🔹 Tabs -->
+      <div class="tabs">
+        <button class="tab-btn active" onclick="showMainTab('home')">
+          🏠 Home
+        </button>
+        <button class="tab-btn" onclick="showMainTab('grades')">
+          📊 Grades
+        </button>
+        <button class="tab-btn" onclick="showMainTab('lists')">📜 Lists</button>
+        <button class="tab-btn" onclick="showMainTab('system')">
+          ⚙️ System
+        </button>
+        <button class="tab-btn" onclick="showMainTab('messages')">
+          💬 Messages
+        </button>
+      </div>
+
+      <div style="padding: 20px">
+        
+
+        <!-- 🏠 HOME -->
+        <div id="tab-home" class="tab-content active">
+          <button onclick="exportAll()">⬇ Export ALL (ZIP)</button>
+          <br>
+          <a href="{{ url_for('show_form') }}">➕ Create New Assignment</a> 
+          <br>
+          <a href="{{ url_for('creator_admin') }}">➕ Create Notification</a>
+          <br>
+          <br>
+          <h3>Reported Issues</h3>
+          <div class="filter-btns">
+            <button id="btn-open" class="active" onclick="filterIssues('open')">
+              🟢 Open
+            </button>
+            <button id="btn-other" onclick="filterIssues('other')">
+              🟡 Other
+            </button>
+            <button id="btn-closed" onclick="filterIssues('closed')">
+              ⚪ Closed
+            </button>
+            <input id="issue-search-input" placeholder="Email/User ID" /><button
+              onclick="searchIssues()"
+            >
+              🔍</button
+            ><button onclick="downloadTableCSV('issues-body','issues.csv')">
+              ⬇
+            </button>
+
+          </div>
+          <div class="scrollable-table">
+            <table id="issues-table">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Type</th>
+                  <th>Description</th>
+                  <th>Status</th>
+                  <th>Reported</th>
+                  <th>Resolved</th>
+                  <th>Update</th>
+                </tr>
+              </thead>
+              <tbody id="issues-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 📊 GRADES -->
+        <div id="tab-grades" class="tab-content">
+          <h3>
+            Grade Distributions
+            <button onclick="downloadChart(adminGradeChart,'grades.png')">
+              ⬇
+            </button>
+          </h3>
+          <div class="filter-btns">
+            <button onclick="fetchOverall()">🌍 Overall</button
+            ><button onclick="fetchTrends()">📈 Trends</button>
+            <button onclick="fetchGroup('student')">👩‍🎓 Students</button
+            ><button onclick="fetchGroup('instructor')">👨‍🏫 Instructors</button>
+            <button onclick="fetchAggregate('student')">👩‍🎓 Total</button
+            ><button onclick="fetchAggregate('instructor')">👨‍🏫 Total</button>
+          </div>
+          <div>
+            <select id="roleSelect">
+              <option value="student">Student</option>
+              <option value="instructor">Instructor</option>
+            </select>
+            <input id="searchGradeInput" placeholder="User ID/Email" /><button
+              onclick="searchGrades()"
+            >
+              🔍
+            </button>
+          </div>
+          <div class="scrollable-table">
+            <canvas id="adminGradeChart" height="150"></canvas>
+          </div>
+          <h3>Grade History</h3>
+          <div class="scrollable-table">
+            <canvas id="gradeHistoryChart" height="150"></canvas>
+          </div>
+        </div>
+
+        <!-- 📜 LISTS -->
+        <div id="tab-lists" class="tab-content">
+          <h3>Submissions</h3>
+          <div>
+            <input
+              id="submission-search-input"
+              placeholder="Submission/User/Assignment"
+            /><button onclick="searchSubmissions()">🔍</button
+            ><button
+              onclick="downloadTableCSV('submissions-body','submissions.csv')"
+            >
+              ⬇
+            </button>
+          </div>
+          <div class="scrollable-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>User</th>
+                  <th>Assignment</th>
+                  <th>Lang</th>
+                  <th>Date</th>
+                  <th>Ver</th>
+                  <th>Code</th>
+                  <th>Eval</th>
+                </tr>
+              </thead>
+              <tbody id="submissions-body">
+                <tr>
+                  <td colspan="8">No data</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Assignments</h3>
+          <div>
+            <select id="assignment-sort" onchange="fetchAssignments()">
+              <option value="">Default</option>
+              <option value="repository_id">Repo ID</option>
+            </select>
+            <input
+              id="assignment-id-input"
+              placeholder="Assignment ID"
+            /><button onclick="searchAssignments()">🔍</button>
+            <input id="repo-id-input" placeholder="Repo ID" /><button
+              onclick="filterByRepo()"
+            >
+              📂
+            </button>
+            <button onclick="fetchAssignments(true)">⏪</button
+            ><button
+              onclick="downloadTableCSV('assignments-body','assignments.csv')"
+            >
+              ⬇
+            </button>
+          </div>
+          <div class="scrollable-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Title</th>
+                  <th>Repo</th>
+                  <th>Subs</th>
+                  <th>Avg</th>
+                  <th>Plag</th>
+                  <th>Pass%</th>
+                  <th>Time</th>
+                  <th>Error</th>
+                  <th>Editor</th>
+                  <th>Upd</th>
+                  <th>📊</th>
+                </tr>
+              </thead>
+              <tbody id="assignments-body">
+                <tr>
+                  <td colspan="12">No data</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Instructors</h3>
+          <div>
+            <input
+              id="instructor-search-input"
+              placeholder="User ID/Email"
+            /><button onclick="searchInstructors()">🔍</button
+            ><button
+              onclick="downloadTableCSV('instructors-body','instructors.csv')"
+            >
+              ⬇
+            </button>
+            <select id="score-filter" onchange="searchInstructors()">
+              <option value="">All</option>
+              <option value="0">0</option>
+              <option value="5">5</option>
+            </select>
+          </div>
+          <div class="scrollable-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Profile</th>
+                </tr>
+              </thead>
+              <tbody id="instructors-body">
+                <tr>
+                  <td colspan="4">No data</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Students</h3>
+          <div>
+            <input
+              id="student-search-input"
+              placeholder="User ID/Email"
+            /><button onclick="searchStudents()">🔍</button
+            ><button onclick="downloadTableCSV('students-body','students.csv')">
+              ⬇
+            </button>
+          </div>
+          <div class="scrollable-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Profile</th>
+                </tr>
+              </thead>
+              <tbody id="students-body">
+                <tr>
+                  <td colspan="4">No data</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ⚙️ SYSTEM -->
+        <div id="tab-system" class="tab-content">
+          <h3>System Stats</h3>
+          <div>
+            <button onclick="updateSystemStats()">🔄</button
+            ><button onclick="downloadChart(gradeChart,'system_stats.png')">
+              ⬇</button
+            ><button
+              onclick="downloadTableCSV('system-stats-body','system_stats.csv')"
+            >
+              ⬇ CSV
+            </button>
+          </div>
+          <div class="scrollable-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Students</th>
+                  <th>Instructors</th>
+                  <th>Assignments</th>
+                  <th>Active</th>
+                  <th>Avg</th>
+                  <th>Subs</th>
+                  <th>New(7d)</th>
+                  <th>Grades</th>
+                </tr>
+              </thead>
+              <tbody id="system-stats-body">
+                <tr>
+                  <td colspan="8">Loading...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <canvas id="gradeChart" height="100"></canvas>
+          <h3>History</h3>
+          <div class="scrollable-table">
+            <canvas id="systemHistoryChart" height="150"></canvas>
+          </div>
+        </div>
+
+        <!-- 💬 MESSAGES -->
+        <div id="tab-messages" class="tab-content">
+          <h3>Messages</h3>
+          <div class="filter-btns">
+            <button
+              id="btn-broadcast"
+              class="active"
+              onclick="showTab('broadcast')"
+            >
+              📢 Broadcasts</button
+            ><button id="btn-notification" onclick="showTab('notification')">
+              🔔 Notifications
+            </button>
+          </div>
+          <div id="notif-search" style="display: none">
+            <input id="notif-search-input" placeholder="Email/User ID" /><button
+              onclick="searchNotifications()"
+            >
+              🔍</button
+            ><button
+              onclick="downloadTableCSV('notification-body','notifications.csv')"
+            >
+              ⬇
+            </button>
+          </div>
+          <div id="broadcast-tab" class="scrollable-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Message</th>
+                  <th>Type</th>
+                  <th>Mode</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for bc in broadcasts %}
+                <tr>
+                  <td>{{ bc.message }}</td>
+                  <td>{{ bc.broadcast_type }}</td>
+                  <td>{{ bc.broadcast_mode }}</td>
+                  <td>{{ bc.created_at }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div
+            id="notification-tab"
+            class="scrollable-table"
+            style="display: none"
+          >
+            <table>
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Message</th>
+                  <th>Mode</th>
+                  <th>Type</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody id="notification-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+    <footer>{% include 'partials/footer.html' %}</footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2"></script>
+
+    <!-- ✅ YOUR FULL EXISTING SCRIPT -->
+    <script>
+      function showMainTab(tab) {
+        document
+          .querySelectorAll(".tab-btn")
+          .forEach((b) => b.classList.remove("active"));
+        document
+          .querySelectorAll(".tab-content")
+          .forEach((c) => c.classList.remove("active"));
+        document
+          .querySelector(`.tab-btn[onclick="showMainTab('${tab}')"]`)
+          .classList.add("active");
+        document.getElementById(`tab-${tab}`).classList.add("active");
+      }
+      const statuses = [
+        "OPEN",
+        "UNDER_REVIEW",
+        "IN_PROGRESS",
+        "ESCALATED",
+        "AWAITING_USER_INFO",
+        "DELAYED",
+        "EXPECTED_7_DAYS",
+        "CONTACT_PENDING",
+        "RESOLVED",
+        "CLOSED",
+        "REJECTED",
+      ];
+
+      let gradeChart, gradeChartLarge;
+      let historyChart, gradeHistoryChart;
+
+      // ------------------ Notifications ------------------
+      let notificationsLoaded = false;
+      function showTab(tab) {
+        document.getElementById("broadcast-tab").style.display =
+          tab === "broadcast" ? "block" : "none";
+        document.getElementById("notification-tab").style.display =
+          tab === "notification" ? "block" : "none";
+        document.getElementById("notif-search").style.display =
+          tab === "notification" ? "block" : "none";
+
+        document
+          .getElementById("btn-broadcast")
+          .classList.toggle("active", tab === "broadcast");
+        document
+          .getElementById("btn-notification")
+          .classList.toggle("active", tab === "notification");
+
+        if (tab === "notification" && !notificationsLoaded) {
+          fetch("/admin/fetch_notifications?limit=50")
+            .then((res) => res.json())
+            .then((data) => {
+              if (data.success) {
+                renderNotifications(data.data);
+                notificationsLoaded = true;
+              } else {
+                Swal.fire(
+                  "Error",
+                  data.message || "Failed to fetch notifications",
+                  "error"
+                );
+              }
+            })
+            .catch(() => Swal.fire("Error", "Network error", "error"));
+        }
+      }
+
+      function renderNotifications(notes) {
+        const tbody = document.getElementById("notification-body");
+        tbody.innerHTML = "";
+        notes.forEach((note) => {
+          const row = `<tr>
             <td>${note.first_name} ${note.last_name}</td>
             <td>${note.message}</td>
             <td>${note.notification_mode}</td>
@@ -176,122 +576,169 @@ a{color:#007BFF;text-decoration:none}
             <td>${note.status}</td>
             <td>${note.created_at}</td>
           </tr>`;
-        tbody.insertAdjacentHTML("beforeend", row);
-      });
-    }
-
-    function searchNotifications() {
-      const value = document.getElementById("notif-search-input").value.trim();
-      if (!value) return Swal.fire("Input required", "Enter email or user id", "info");
-      const param = isNaN(value) ? "email=" + encodeURIComponent(value) : "user_id=" + value;
-      fetch(`/admin/search/notifications?${param}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.success) {
-            renderNotifications(data.data);
-          } else {
-            Swal.fire("Error", data.message || "No notifications found", "error");
-          }
-        })
-        .catch(() => Swal.fire("Error", "Network error", "error"));
-    }
-
-    // ------------------ Issues ------------------
-    function renderIssues(issues) {
-      const tbody = document.getElementById("issues-body");
-      tbody.innerHTML = "";
-      if (!issues || issues.length === 0) {
-        tbody.innerHTML = "<tr><td colspan='7'>No issues found.</td></tr>";
-        return;
+          tbody.insertAdjacentHTML("beforeend", row);
+        });
       }
-      issues.forEach(issue => {
-        const row = `<tr>
+
+      function searchNotifications() {
+        const value = document
+          .getElementById("notif-search-input")
+          .value.trim();
+        if (!value)
+          return Swal.fire("Input required", "Enter email or user id", "info");
+        const param = isNaN(value)
+          ? "email=" + encodeURIComponent(value)
+          : "user_id=" + value;
+        fetch(`/admin/search/notifications?${param}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.success) {
+              renderNotifications(data.data);
+            } else {
+              Swal.fire(
+                "Error",
+                data.message || "No notifications found",
+                "error"
+              );
+            }
+          })
+          .catch(() => Swal.fire("Error", "Network error", "error"));
+      }
+
+      // ------------------ Issues ------------------
+      function renderIssues(issues) {
+        const tbody = document.getElementById("issues-body");
+        tbody.innerHTML = "";
+        if (!issues || issues.length === 0) {
+          tbody.innerHTML = "<tr><td colspan='7'>No issues found.</td></tr>";
+          return;
+        }
+        issues.forEach((issue) => {
+          const row = `<tr>
             <td>${issue.first_name} ${issue.last_name}</td>
             <td>${issue.issue_type}</td>
             <td>${issue.description}</td>
             <td>
               <select id="status-${issue.issue_id}">
-                ${statuses.map(s => `<option value="${s}" ${issue.status===s?"selected":""}>${s}</option>`).join("")}
+                ${statuses
+                  .map(
+                    (s) =>
+                      `<option value="${s}" ${
+                        issue.status === s ? "selected" : ""
+                      }>${s}</option>`
+                  )
+                  .join("")}
               </select>
             </td>
             <td>${issue.reported_at}</td>
             <td>${issue.resolved_at || "Pending"}</td>
-            <td><button onclick="updateIssueStatus(${issue.issue_id})">💾 Update</button></td>
+            <td><button onclick="updateIssueStatus(${
+              issue.issue_id
+            })">💾 Update</button></td>
           </tr>`;
-        tbody.insertAdjacentHTML("beforeend", row);
-      });
-    }
-
-    function searchIssues() {
-      const value = document.getElementById("issue-search-input").value.trim();
-      if (!value) return Swal.fire("Input required", "Enter email or user id", "info");
-      const param = isNaN(value) ? "email=" + encodeURIComponent(value) : "user_id=" + value;
-      fetch(`/admin/search/issues?${param}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.success) {
-            renderIssues(data.data);
-          } else {
-            Swal.fire("Error", data.message || "No issues found", "error");
-          }
-        })
-        .catch(() => Swal.fire("Error", "Network error", "error"));
-    }
-
-    function filterIssues(type) {
-      document.querySelectorAll(".filter-btns button").forEach(btn => btn.classList.remove("active"));
-      document.getElementById("btn-" + type).classList.add("active");
-      fetch(`/admin/issues/filter/${type}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.success) {
-            renderIssues(data.data);
-          } else {
-            Swal.fire("Error", data.message || "Failed to fetch issues", "error");
-          }
-        })
-        .catch(() => Swal.fire("Error", "Network error", "error"));
-    }
-
-    function updateIssueStatus(issueId) {
-      const status = document.getElementById(`status-${issueId}`).value;
-      fetch(`/admin/update_issue_status/${issueId}`, {
-        method: "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({status})
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          Swal.fire("Updated!", "Issue status updated successfully.", "success")
-            .then(() => filterIssues(document.querySelector(".filter-btns button.active").id.replace("btn-", "")));
-        } else {
-          Swal.fire("Error", data.message || "Update failed", "error");
-        }
-      })
-      .catch(() => Swal.fire("Error", "Network error", "error"));
-    }
-
-    // ------------------ System Stats ------------------
-    function fetchSystemStats() {
-      fetch('/api/analytics/system/fetch')
-        .then(res => res.json())
-        .then(data => {
-          if (data.status === "success") {
-            renderSystemStats(data.data);
-          } else {
-            Swal.fire("Error", data.message || "Failed to fetch system stats", "error");
-          }
-        })
-        .catch(() => Swal.fire("Error", "Network error", "error"));
-    }
-
-    function renderSystemStats(stats) {
-      const tbody = document.getElementById("system-stats-body");
-      let dist = stats.grade_distribution;
-      if (typeof dist === "string") {
-        try { dist = JSON.parse(dist); } catch { dist = {}; }
+          tbody.insertAdjacentHTML("beforeend", row);
+        });
       }
-      tbody.innerHTML = `<tr>
+
+      function searchIssues() {
+        const value = document
+          .getElementById("issue-search-input")
+          .value.trim();
+        if (!value)
+          return Swal.fire("Input required", "Enter email or user id", "info");
+        const param = isNaN(value)
+          ? "email=" + encodeURIComponent(value)
+          : "user_id=" + value;
+        fetch(`/admin/search/issues?${param}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.success) {
+              renderIssues(data.data);
+            } else {
+              Swal.fire("Error", data.message || "No issues found", "error");
+            }
+          })
+          .catch(() => Swal.fire("Error", "Network error", "error"));
+      }
+
+      function filterIssues(type) {
+        document
+          .querySelectorAll(".filter-btns button")
+          .forEach((btn) => btn.classList.remove("active"));
+        document.getElementById("btn-" + type).classList.add("active");
+        fetch(`/admin/issues/filter/${type}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.success) {
+              renderIssues(data.data);
+            } else {
+              Swal.fire(
+                "Error",
+                data.message || "Failed to fetch issues",
+                "error"
+              );
+            }
+          })
+          .catch(() => Swal.fire("Error", "Network error", "error"));
+      }
+
+      function updateIssueStatus(issueId) {
+        const status = document.getElementById(`status-${issueId}`).value;
+        fetch(`/admin/update_issue_status/${issueId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.success) {
+              Swal.fire(
+                "Updated!",
+                "Issue status updated successfully.",
+                "success"
+              ).then(() =>
+                filterIssues(
+                  document
+                    .querySelector(".filter-btns button.active")
+                    .id.replace("btn-", "")
+                )
+              );
+            } else {
+              Swal.fire("Error", data.message || "Update failed", "error");
+            }
+          })
+          .catch(() => Swal.fire("Error", "Network error", "error"));
+      }
+
+      // ------------------ System Stats ------------------
+      function fetchSystemStats() {
+        fetch("/api/analytics/system/fetch")
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.status === "success") {
+              renderSystemStats(data.data);
+            } else {
+              Swal.fire(
+                "Error",
+                data.message || "Failed to fetch system stats",
+                "error"
+              );
+            }
+          })
+          .catch(() => Swal.fire("Error", "Network error", "error"));
+      }
+
+      function renderSystemStats(stats) {
+        const tbody = document.getElementById("system-stats-body");
+        let dist = stats.grade_distribution;
+        if (typeof dist === "string") {
+          try {
+            dist = JSON.parse(dist);
+          } catch {
+            dist = {};
+          }
+        }
+        tbody.innerHTML = `<tr>
           <td>${stats.total_students}</td>
           <td>${stats.total_instructors}</td>
           <td>${stats.total_assignments}</td>
@@ -299,208 +746,363 @@ a{color:#007BFF;text-decoration:none}
           <td>${stats.average_score}</td>
           <td>${stats.total_submissions}</td>
           <td>${stats.new_users_last_week}</td>
-          <td><button onclick='openGradeModal(${JSON.stringify(dist)})'>📊 View</button></td>
+          <td><button onclick='openGradeModal(${JSON.stringify(
+            dist
+          )})'>📊 View</button></td>
         </tr>`;
 
-      const ctx = document.getElementById("gradeChart").getContext("2d");
-      if (gradeChart) gradeChart.destroy();
-      gradeChart = new Chart(ctx, {
-        type: 'bar',
-        data: { labels: Object.keys(dist), datasets: [{ label: "Grades", data: Object.values(dist),
-            backgroundColor: ['#4caf50','#2196f3','#ffeb3b','#ff9800','#f44336','#9c27b0'] }] },
-        options: { responsive: true, plugins: { legend: { display: false } } }
-      });
-    }
-
-    function updateSystemStats() {
-      fetch('/api/analytics/system/update', { method: "POST" })
-        .then(res => res.json())
-        .then(data => {
-          if (data.status === "success") {
-            Swal.fire("✅ Updated", "System snapshot saved successfully", "success");
-            renderSystemStats(data.snapshot);
-          } else {
-            Swal.fire("Error", data.message || "Failed to update system stats", "error");
-          }
-        })
-        .catch(() => Swal.fire("Error", "Network error", "error"));
-    }
-
-    // ------------------ Grade Chart Modal ------------------
-    function openGradeModal(dist) {
-      document.getElementById("gradeModal").style.display = "flex";
-      const ctx = document.getElementById("gradeChartLarge").getContext("2d");
-      if (gradeChartLarge) gradeChartLarge.destroy();
-      gradeChartLarge = new Chart(ctx, {
-        type: 'bar',
-        data: { labels: Object.keys(dist), datasets: [{ label: "Grade Distribution", data: Object.values(dist),
-            backgroundColor: ['#4caf50','#2196f3','#ffeb3b','#ff9800','#f44336','#9c27b0'] }] },
-        options: {
-          responsive: true,
-          plugins: {
-            zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
-                    pan: { enabled: true, mode: 'x' } }
-          }
-        }
-      });
-    }
-
-    function closeModal() {
-      document.getElementById("gradeModal").style.display = "none";
-    }
-
-    // ------------------ System History ------------------
-    function fetchSystemHistory() {
-      fetch('/api/analytics/system/history')
-        .then(res => res.json())
-        .then(data => {
-          if (data.status === "success") {
-            data.data.forEach(r => {
-              if (typeof r.grade_distribution === "string") {
-                try { r.grade_distribution = JSON.parse(r.grade_distribution); }
-                catch { r.grade_distribution = {A:0,B:0,C:0,D:0,E:0,F:0}; }
-              }
-            });
-            renderSystemHistory(data.data);
-          } else {
-            Swal.fire("Error", data.message || "Failed to fetch system history", "error");
-          }
-        })
-        .catch(() => Swal.fire("Error", "Network error", "error"));
-    }
-
-    function renderSystemHistory(rows) {
-      if (!rows || rows.length === 0) return;
-
-      const labels = rows.map(r => r.timestamp);
-      const students = rows.map(r => r.total_students);
-      const submissions = rows.map(r => r.total_submissions);
-      const avgScores = rows.map(r => r.average_score);
-      const active_users = rows.map(r=> r.active_users_today);
-    
-
-      // --- System Stats History Chart ---
-      const ctx = document.getElementById("systemHistoryChart").getContext("2d");
-      if (historyChart) historyChart.destroy();
-      historyChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [
-            { label: "Total Students", data: students, borderColor: "#4caf50", fill: false },
-            { label: "Total Submissions", data: submissions, borderColor: "#2196f3", fill: false },
-            { label: "Average Score", data: avgScores, borderColor: "#ff9800", fill: false, yAxisID: 'y1' },
-            { label: "Active Users", data: active_users, borderColor: "#447adfff", fill: false },
-          ]
-        },
-        options: {
-          responsive: true,
-          interaction: { mode: 'index', intersect: false },
-          stacked: false,
-          plugins: {
-            zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
-                    pan: { enabled: true, mode: 'x' } }
+        const ctx = document.getElementById("gradeChart").getContext("2d");
+        if (gradeChart) gradeChart.destroy();
+        gradeChart = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: Object.keys(dist),
+            datasets: [
+              {
+                label: "Grades",
+                data: Object.values(dist),
+                backgroundColor: [
+                  "#4caf50",
+                  "#2196f3",
+                  "#ffeb3b",
+                  "#ff9800",
+                  "#f44336",
+                  "#9c27b0",
+                ],
+              },
+            ],
           },
-          scales: {
-            y: { type: 'linear', position: 'left', title: { display: true, text: "Counts" } },
-            y1: { type: 'linear', position: 'right', title: { display: true, text: "Average Score" }, grid: { drawOnChartArea: false } }
-          }
-        }
-      });
-
-      // --- Grade Distribution History (Stacked Area) ---
-      const gradeA = rows.map(r => r.grade_distribution.A || 0);
-      const gradeB = rows.map(r => r.grade_distribution.B || 0);
-      const gradeC = rows.map(r => r.grade_distribution.C || 0);
-      const gradeD = rows.map(r => r.grade_distribution.D || 0);
-      const gradeE = rows.map(r => r.grade_distribution.E || 0);
-      const gradeF = rows.map(r => r.grade_distribution.F || 0);
-
-      const gctx = document.getElementById("gradeHistoryChart").getContext("2d");
-      if (gradeHistoryChart) gradeHistoryChart.destroy();
-      gradeHistoryChart = new Chart(gctx, {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [
-            { label: "A", data: gradeA, borderColor: "#4caf50", backgroundColor: "rgba(76,175,80,0.4)", fill: true },
-            { label: "B", data: gradeB, borderColor: "#2196f3", backgroundColor: "rgba(33,150,243,0.4)", fill: true },
-            { label: "C", data: gradeC, borderColor: "#ffeb3b", backgroundColor: "rgba(255,235,59,0.4)", fill: true },
-            { label: "D", data: gradeD, borderColor: "#ff9800", backgroundColor: "rgba(255,152,0,0.4)", fill: true },
-            { label: "E", data: gradeE, borderColor: "#f44336", backgroundColor: "rgba(244,67,54,0.4)", fill: true },
-            { label: "F", data: gradeF, borderColor: "#9c27b0", backgroundColor: "rgba(156,39,176,0.4)", fill: true }
-          ]
-        },
-        options: {
-          responsive: true,
-          interaction: { mode: 'index', intersect: false },
-          plugins: {
-            zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
-                    pan: { enabled: true, mode: 'x' } }
+          options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
           },
-          scales: {
-            x: { stacked: true },
-            y: { stacked: true, title: { display: true, text: "Total Users by Grade" } }
-          }
-        }
-      });
-    }
+        });
+      }
 
-// ---------------- Submissions ----------------
-function searchSubmissions(){
-  const q=document.getElementById("submission-search-input").value.trim();
-  fetch(`/admin/submissions?query=${encodeURIComponent(q)}`)
-    .then(r=>r.json()).then(d=>{
-      if(d.success) renderSubmissions(d.data);
-      else Swal.fire("Error", d.message||"No results","error");
-    });
-}
-function renderSubmissions(rows){
-  const tb=document.getElementById("submissions-body");
-  tb.innerHTML="";
-  if(!rows.length){ tb.innerHTML="<tr><td colspan='8'>No results</td></tr>"; return; }
-  rows.forEach(s=>{
-    tb.innerHTML+=`
+      function updateSystemStats() {
+        fetch("/api/analytics/system/update", { method: "POST" })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.status === "success") {
+              Swal.fire(
+                "✅ Updated",
+                "System snapshot saved successfully",
+                "success"
+              );
+              renderSystemStats(data.snapshot);
+            } else {
+              Swal.fire(
+                "Error",
+                data.message || "Failed to update system stats",
+                "error"
+              );
+            }
+          })
+          .catch(() => Swal.fire("Error", "Network error", "error"));
+      }
+
+      // ------------------ Grade Chart Modal ------------------
+      function openGradeModal(dist) {
+        document.getElementById("gradeModal").style.display = "flex";
+        const ctx = document.getElementById("gradeChartLarge").getContext("2d");
+        if (gradeChartLarge) gradeChartLarge.destroy();
+        gradeChartLarge = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: Object.keys(dist),
+            datasets: [
+              {
+                label: "Grade Distribution",
+                data: Object.values(dist),
+                backgroundColor: [
+                  "#4caf50",
+                  "#2196f3",
+                  "#ffeb3b",
+                  "#ff9800",
+                  "#f44336",
+                  "#9c27b0",
+                ],
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              zoom: {
+                zoom: {
+                  wheel: { enabled: true },
+                  pinch: { enabled: true },
+                  mode: "x",
+                },
+                pan: { enabled: true, mode: "x" },
+              },
+            },
+          },
+        });
+      }
+
+      function closeModal() {
+        document.getElementById("gradeModal").style.display = "none";
+      }
+
+      // ------------------ System History ------------------
+      function fetchSystemHistory() {
+        fetch("/api/analytics/system/history")
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.status === "success") {
+              data.data.forEach((r) => {
+                if (typeof r.grade_distribution === "string") {
+                  try {
+                    r.grade_distribution = JSON.parse(r.grade_distribution);
+                  } catch {
+                    r.grade_distribution = {
+                      A: 0,
+                      B: 0,
+                      C: 0,
+                      D: 0,
+                      E: 0,
+                      F: 0,
+                    };
+                  }
+                }
+              });
+              renderSystemHistory(data.data);
+            } else {
+              Swal.fire(
+                "Error",
+                data.message || "Failed to fetch system history",
+                "error"
+              );
+            }
+          })
+          .catch(() => Swal.fire("Error", "Network error", "error"));
+      }
+
+      function renderSystemHistory(rows) {
+        if (!rows || rows.length === 0) return;
+
+        const labels = rows.map((r) => r.timestamp);
+        const students = rows.map((r) => r.total_students);
+        const submissions = rows.map((r) => r.total_submissions);
+        const avgScores = rows.map((r) => r.average_score);
+        const active_users = rows.map((r) => r.active_users_today);
+
+        // --- System Stats History Chart ---
+        const ctx = document
+          .getElementById("systemHistoryChart")
+          .getContext("2d");
+        if (historyChart) historyChart.destroy();
+        historyChart = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels,
+            datasets: [
+              {
+                label: "Total Students",
+                data: students,
+                borderColor: "#4caf50",
+                fill: false,
+              },
+              {
+                label: "Total Submissions",
+                data: submissions,
+                borderColor: "#2196f3",
+                fill: false,
+              },
+              {
+                label: "Average Score",
+                data: avgScores,
+                borderColor: "#ff9800",
+                fill: false,
+                yAxisID: "y1",
+              },
+              {
+                label: "Active Users",
+                data: active_users,
+                borderColor: "#447adfff",
+                fill: false,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            interaction: { mode: "index", intersect: false },
+            stacked: false,
+            plugins: {
+              zoom: {
+                zoom: {
+                  wheel: { enabled: true },
+                  pinch: { enabled: true },
+                  mode: "x",
+                },
+                pan: { enabled: true, mode: "x" },
+              },
+            },
+            scales: {
+              y: {
+                type: "linear",
+                position: "left",
+                title: { display: true, text: "Counts" },
+              },
+              y1: {
+                type: "linear",
+                position: "right",
+                title: { display: true, text: "Average Score" },
+                grid: { drawOnChartArea: false },
+              },
+            },
+          },
+        });
+
+        // --- Grade Distribution History (Stacked Area) ---
+        const gradeA = rows.map((r) => r.grade_distribution.A || 0);
+        const gradeB = rows.map((r) => r.grade_distribution.B || 0);
+        const gradeC = rows.map((r) => r.grade_distribution.C || 0);
+        const gradeD = rows.map((r) => r.grade_distribution.D || 0);
+        const gradeE = rows.map((r) => r.grade_distribution.E || 0);
+        const gradeF = rows.map((r) => r.grade_distribution.F || 0);
+
+        const gctx = document
+          .getElementById("gradeHistoryChart")
+          .getContext("2d");
+        if (gradeHistoryChart) gradeHistoryChart.destroy();
+        gradeHistoryChart = new Chart(gctx, {
+          type: "line",
+          data: {
+            labels,
+            datasets: [
+              {
+                label: "A",
+                data: gradeA,
+                borderColor: "#4caf50",
+                backgroundColor: "rgba(76,175,80,0.4)",
+                fill: true,
+              },
+              {
+                label: "B",
+                data: gradeB,
+                borderColor: "#2196f3",
+                backgroundColor: "rgba(33,150,243,0.4)",
+                fill: true,
+              },
+              {
+                label: "C",
+                data: gradeC,
+                borderColor: "#ffeb3b",
+                backgroundColor: "rgba(255,235,59,0.4)",
+                fill: true,
+              },
+              {
+                label: "D",
+                data: gradeD,
+                borderColor: "#ff9800",
+                backgroundColor: "rgba(255,152,0,0.4)",
+                fill: true,
+              },
+              {
+                label: "E",
+                data: gradeE,
+                borderColor: "#f44336",
+                backgroundColor: "rgba(244,67,54,0.4)",
+                fill: true,
+              },
+              {
+                label: "F",
+                data: gradeF,
+                borderColor: "#9c27b0",
+                backgroundColor: "rgba(156,39,176,0.4)",
+                fill: true,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            interaction: { mode: "index", intersect: false },
+            plugins: {
+              zoom: {
+                zoom: {
+                  wheel: { enabled: true },
+                  pinch: { enabled: true },
+                  mode: "x",
+                },
+                pan: { enabled: true, mode: "x" },
+              },
+            },
+            scales: {
+              x: { stacked: true },
+              y: {
+                stacked: true,
+                title: { display: true, text: "Total Users by Grade" },
+              },
+            },
+          },
+        });
+      }
+
+      // ---------------- Submissions ----------------
+      function searchSubmissions() {
+        const q = document
+          .getElementById("submission-search-input")
+          .value.trim();
+        fetch(`/admin/submissions?query=${encodeURIComponent(q)}`)
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.success) renderSubmissions(d.data);
+            else Swal.fire("Error", d.message || "No results", "error");
+          });
+      }
+      function renderSubmissions(rows) {
+        const tb = document.getElementById("submissions-body");
+        tb.innerHTML = "";
+        if (!rows.length) {
+          tb.innerHTML = "<tr><td colspan='8'>No results</td></tr>";
+          return;
+        }
+        rows.forEach((s) => {
+          tb.innerHTML += `
       <tr>
         <td>${s.submission_id}</td>
         <td>${s.user_id}</td>
         <td>${s.assignment_id}</td>
         <td>${s.language}</td>
         <td>${s.submitted_on}</td>
-        <td>${s.version||"-"}</td>
+        <td>${s.version || "-"}</td>
         <td><button onclick="viewCode('${s.code_path}')">📄</button> </td>
-<td>
-  <button onclick="window.location.href='/code_submission_report?submission_id=${s.submission_id}'">
-    ⚡ Evaluate
-  </button>
-</td>
+    <td>
+      <button onclick="window.location.href='/code_submission_report?submission_id=${
+        s.submission_id
+      }'">
+        ⚡ Evaluate
+      </button>
+    </td>
       </tr>`;
-  });
-}
-function viewCode(path){
-  if (!path) {
-    Swal.fire("Error", "No code path provided", "error");
-    return;
-  }
-  fetch(`/view-code?path=${encodeURIComponent(path)}`)
-    .then(res => res.json())
-    .then(data => {
-      if (data.error) {
-        Swal.fire("Error", data.error, "error");
-      } else {
-        // Detect language from file extension
-        const ext = path.split('.').pop().toLowerCase();
-        let lang = "clike"; // fallback
-        if (ext === "py") lang = "python";
-        else if (ext === "java") lang = "java";
-        else if (ext === "c") lang = "c";
-        else if (ext === "cpp") lang = "cpp";
+        });
+      }
+      function viewCode(path) {
+        if (!path) {
+          Swal.fire("Error", "No code path provided", "error");
+          return;
+        }
+        fetch(`/view-code?path=${encodeURIComponent(path)}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.error) {
+              Swal.fire("Error", data.error, "error");
+            } else {
+              // Detect language from file extension
+              const ext = path.split(".").pop().toLowerCase();
+              let lang = "clike"; // fallback
+              if (ext === "py") lang = "python";
+              else if (ext === "java") lang = "java";
+              else if (ext === "c") lang = "c";
+              else if (ext === "cpp") lang = "cpp";
 
-        const safeCode = escapeHtml(data.code);
+              const safeCode = escapeHtml(data.code);
 
-        Swal.fire({
-          title: "📄 Submission Code",
-          html: `
+              Swal.fire({
+                title: "📄 Submission Code",
+                html: `
             <div id="code-wrapper" style="
                 text-align:left;
                 min-height: 30vh;
@@ -518,94 +1120,95 @@ function viewCode(path){
               </button>
             </div>
           `,
-          width: 900,
-          didOpen: () => {
-            Prism.highlightAll(); // ✅ highlight after modal opens
+                width: 900,
+                didOpen: () => {
+                  Prism.highlightAll(); // ✅ highlight after modal opens
 
-            // ✅ attach download button event safely
-            document.getElementById("download-btn").onclick = () => {
-              downloadCode(data.code, path);
-            };
-          }
-        });
+                  // ✅ attach download button event safely
+                  document.getElementById("download-btn").onclick = () => {
+                    downloadCode(data.code, path);
+                  };
+                },
+              });
+            }
+          })
+          .catch(() => Swal.fire("Error", "Network error", "error"));
       }
-    })
-    .catch(() => Swal.fire("Error", "Network error", "error"));
-}
 
+      function escapeHtml(text) {
+        const map = {
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#039;",
+        };
+        return text.replace(/[&<>"']/g, (m) => map[m]);
+      }
 
+      function downloadCode(code, path) {
+        const blob = new Blob([code], { type: "text/plain" });
+        const url = URL.createObjectURL(blob);
+        const filename = path.split(/[/\\]/).pop() || "submission.txt";
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
 
-function escapeHtml(text) {
-  const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-  return text.replace(/[&<>"']/g, m => map[m]);
-}
+      // ---------------- Assignments ----------------
+      function fetchAssignments(reset = false) {
+        const sort = document.getElementById("assignment-sort").value;
+        let url = `/admin/assignments?sort=${sort}`;
 
-function downloadCode(code, path){
-  const blob = new Blob([code], { type: "text/plain" });
-  const url = URL.createObjectURL(blob);
-  const filename = path.split(/[/\\]/).pop() || "submission.txt";
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
+        if (!reset) {
+          const aid = document
+            .getElementById("assignment-id-input")
+            .value.trim();
+          const rid = document.getElementById("repo-id-input").value.trim();
+          if (aid) url += `&assignment_id=${aid}`;
+          else if (rid) url += `&repo_id=${rid}`;
+        } else {
+          document.getElementById("assignment-id-input").value = "";
+          document.getElementById("repo-id-input").value = "";
+        }
 
+        fetch(url)
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.success) renderAssignments(d.data);
+            else Swal.fire("Error", d.message, "error");
+          });
+      }
 
+      function searchAssignments() {
+        const aid = document.getElementById("assignment-id-input").value.trim();
+        if (!aid) {
+          Swal.fire("Info", "Please enter Assignment ID", "info");
+          return;
+        }
+        fetch(`/admin/assignments?assignment_id=${aid}`)
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.success) renderAssignments(d.data);
+            else Swal.fire("Error", d.message, "error");
+          });
+      }
 
+      function renderAssignments(rows) {
+        const tb = document.getElementById("assignments-body");
+        tb.innerHTML = "";
 
+        if (!rows.length) {
+          tb.innerHTML = "<tr><td colspan='12'>No results</td></tr>";
+          return;
+        }
 
-
-// ---------------- Assignments ----------------
-function fetchAssignments(reset=false){
-  const sort = document.getElementById("assignment-sort").value;
-  let url = `/admin/assignments?sort=${sort}`;
-
-  if (!reset){
-    const aid = document.getElementById("assignment-id-input").value.trim();
-    const rid = document.getElementById("repo-id-input").value.trim();
-    if (aid) url += `&assignment_id=${aid}`;
-    else if (rid) url += `&repo_id=${rid}`;
-  } else {
-    document.getElementById("assignment-id-input").value = "";
-    document.getElementById("repo-id-input").value = "";
-  }
-
-  fetch(url)
-    .then(r => r.json())
-    .then(d => {
-      if (d.success) renderAssignments(d.data);
-      else Swal.fire("Error", d.message, "error");
-    });
-}
-
-function searchAssignments(){
-  const aid = document.getElementById("assignment-id-input").value.trim();
-  if (!aid){
-    Swal.fire("Info", "Please enter Assignment ID", "info");
-    return;
-  }
-  fetch(`/admin/assignments?assignment_id=${aid}`)
-    .then(r => r.json())
-    .then(d => {
-      if (d.success) renderAssignments(d.data);
-      else Swal.fire("Error", d.message, "error");
-    });
-}
-
-function renderAssignments(rows){
-  const tb = document.getElementById("assignments-body");
-  tb.innerHTML = "";
-
-  if (!rows.length){
-    tb.innerHTML = "<tr><td colspan='12'>No results</td></tr>";
-    return;
-  }
-
-  rows.forEach(a => {
-    tb.innerHTML += `
+        rows.forEach((a) => {
+          tb.innerHTML += `
       <tr>
         <td>${a.assignment_id}</td>
         <td>${a.title}</td>
@@ -620,354 +1223,467 @@ function renderAssignments(rows){
         <td><button onclick="updateAssignment(${a.assignment_id}, ${a.repository_id})">⚙️ Update</button></td>
         <td><button onclick="viewAssignmentDist(${a.assignment_id})">📊 Distribution</button></td>
       </tr>`;
-  });
-}
+        });
+      }
 
-function openEditor(aid){
-  window.location.href = `/code_editor/${aid}`;
-}
+      function openEditor(aid) {
+        window.location.href = `/code_editor/${aid}`;
+      }
 
+      function updateAssignment(aid, rid) {
+        // redirect to assignment management page, open Update tab
+        window.location.href = `/create-assignment#update?assignment_id=${aid}&repo_id=${rid}`;
+      }
 
-function updateAssignment(aid, rid){
-  // redirect to assignment management page, open Update tab
-  window.location.href = `/create-assignment#update?assignment_id=${aid}&repo_id=${rid}`;
-}
+      function filterByRepo() {
+        const rid = document.getElementById("repo-id-input").value.trim();
+        if (!rid) {
+          Swal.fire("Info", "Please enter Repository ID", "info");
+          return;
+        }
+        fetch(`/admin/assignments?repo_id=${rid}`)
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.success) renderAssignments(d.data);
+            else Swal.fire("Error", d.message, "error");
+          });
+      }
 
+      // ---------------- Assignment Grade Distribution ----------------
 
-function filterByRepo(){
-  const rid = document.getElementById("repo-id-input").value.trim();
-  if (!rid){
-    Swal.fire("Info", "Please enter Repository ID", "info");
-    return;
-  }
-  fetch(`/admin/assignments?repo_id=${rid}`)
-    .then(r => r.json())
-    .then(d => {
-      if (d.success) renderAssignments(d.data);
-      else Swal.fire("Error", d.message, "error");
-    });
-}
+      function renderAssignmentDistribution(data) {
+        let labels = data.labels || Object.keys(data);
+        let values = data.values || Object.values(data);
 
-// ---------------- Assignment Grade Distribution ----------------
+        const ctx = document.getElementById("gradeChartLarge").getContext("2d");
+        if (gradeChartLarge) gradeChartLarge.destroy();
+        gradeChartLarge = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels,
+            datasets: [
+              {
+                label: "Students per Grade",
+                data: values,
+                backgroundColor: [
+                  "#4caf50",
+                  "#2196f3",
+                  "#ffeb3b",
+                  "#ff9800",
+                  "#f44336",
+                  "#9c27b0",
+                ],
+              },
+            ],
+          },
+        });
+      }
 
+      async function viewAssignmentDist(assignmentId) {
+        try {
+          const res = await fetch(
+            `/api/grade/distribution/assignment/${assignmentId}`
+          );
+          const json = await res.json();
+          if (json.status !== "success") {
+            return Swal.fire(
+              "Error",
+              json.message || "Failed to load distribution",
+              "error"
+            );
+          }
+          renderAssignmentDistribution(json.data);
+          document.getElementById("gradeModal").style.display = "flex";
+        } catch (err) {
+          console.error(err);
+          Swal.fire("Error", "Network error", "error");
+        }
+      }
 
-function renderAssignmentDistribution(data) {
-  let labels = data.labels || Object.keys(data);
-  let values = data.values || Object.values(data);
+      // ---------------- Instructors ----------------
+      function searchInstructors() {
+        const q = document
+          .getElementById("instructor-search-input")
+          .value.trim();
+        const score = document.getElementById("score-filter").value;
 
-  const ctx = document.getElementById("gradeChartLarge").getContext("2d");
-  if (gradeChartLarge) gradeChartLarge.destroy();
-  gradeChartLarge = new Chart(ctx, {
-    type: 'bar',
-    data: { labels, datasets: [{ label:"Students per Grade", data: values,
-      backgroundColor: ['#4caf50','#2196f3','#ffeb3b','#ff9800','#f44336','#9c27b0'] }] }
-  });
-}
+        const params = new URLSearchParams();
+        if (q) params.append("search", q); // email or user_id
+        if (score) params.append("score", score); // exact feedback score
 
-async function viewAssignmentDist(assignmentId) {
-  try {
-    const res = await fetch(`/api/grade/distribution/assignment/${assignmentId}`);
-    const json = await res.json();
-    if (json.status !== "success") {
-      return Swal.fire("Error", json.message || "Failed to load distribution", "error");
-    }
-    renderAssignmentDistribution(json.data);
-    document.getElementById("gradeModal").style.display = "flex";
-  } catch (err) {
-    console.error(err);
-    Swal.fire("Error", "Network error", "error");
-  }
-}
+        fetch(`/admin/instructors?${params.toString()}`)
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.success) renderInstructors(d.data);
+            else Swal.fire("Error", d.message, "error");
+          });
+      }
 
+      function fetchInstructors() {
+        searchInstructors(); // default fetch shows all
+      }
 
+      function fetchInstructors() {
+        searchInstructors();
+      }
 
+      function renderInstructors(rows) {
+        const tb = document.getElementById("instructors-body");
+        tb.innerHTML = "";
 
+        if (!rows.length) {
+          tb.innerHTML = "<tr><td colspan='4'>No results</td></tr>";
+          return;
+        }
 
-// ---------------- Instructors ----------------
-function searchInstructors(){
-  const q = document.getElementById("instructor-search-input").value.trim();
-  const score = document.getElementById("score-filter").value;
-
-  const params = new URLSearchParams();
-  if (q) params.append("search", q);      // email or user_id
-  if (score) params.append("score", score); // exact feedback score
-
-  fetch(`/admin/instructors?${params.toString()}`)
-    .then(r => r.json()).then(d=>{
-      if(d.success) renderInstructors(d.data);
-      else Swal.fire("Error", d.message,"error");
-    });
-}
-
-function fetchInstructors(){ 
-  searchInstructors(); // default fetch shows all
-}
-
-
-function fetchInstructors(){ searchInstructors(); 
-}
-
-function renderInstructors(rows){
-  const tb = document.getElementById("instructors-body");
-  tb.innerHTML = "";
-
-  if (!rows.length) {
-    tb.innerHTML = "<tr><td colspan='4'>No results</td></tr>";
-    return;
-  }
-
-  rows.forEach(u => {
-    const profileUrl = `/profile/${u.user_id}?role=instructor`;
-    tb.innerHTML += `
+        rows.forEach((u) => {
+          const profileUrl = `/profile/${u.user_id}?role=instructor`;
+          tb.innerHTML += `
       <tr>
         <td>${u.user_id}</td>
         <td>${u.name}</td>
         <td>${u.email}</td>
         <td><a href="${profileUrl}">👤 View</a></td>
       </tr>`;
-  });
-}
-
-// ---------------- Students ----------------
-function searchStudents(){
-  const q = document.getElementById("student-search-input").value.trim();
-
-  const params = new URLSearchParams();
-  if (q) params.append("search", q);
-
-  fetch(`/admin/students?${params.toString()}`)
-    .then(r => r.json())
-    .then(d => {
-      if (d.success) {
-        renderStudents(d.data);
-      } else {
-        Swal.fire("Error", d.message || "No results", "error");
+        });
       }
-    })
-    .catch(() => Swal.fire("Error", "Network error", "error"));
-}
 
-function fetchStudents(){ 
-  searchStudents(); 
-}
+      // ---------------- Students ----------------
+      function searchStudents() {
+        const q = document.getElementById("student-search-input").value.trim();
 
-function renderStudents(rows){
-  const tb = document.getElementById("students-body");
-  tb.innerHTML = "";
+        const params = new URLSearchParams();
+        if (q) params.append("search", q);
 
-  if (!rows || rows.length === 0) {
-    tb.innerHTML = "<tr><td colspan='4'>No results</td></tr>";
-    return;
-  }
+        fetch(`/admin/students?${params.toString()}`)
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.success) {
+              renderStudents(d.data);
+            } else {
+              Swal.fire("Error", d.message || "No results", "error");
+            }
+          })
+          .catch(() => Swal.fire("Error", "Network error", "error"));
+      }
 
-  rows.forEach(u => {
-    const profileUrl = `/profile/${u.user_id}?role=student`;
-    tb.insertAdjacentHTML("beforeend", `
+      function fetchStudents() {
+        searchStudents();
+      }
+
+      function renderStudents(rows) {
+        const tb = document.getElementById("students-body");
+        tb.innerHTML = "";
+
+        if (!rows || rows.length === 0) {
+          tb.innerHTML = "<tr><td colspan='4'>No results</td></tr>";
+          return;
+        }
+
+        rows.forEach((u) => {
+          const profileUrl = `/profile/${u.user_id}?role=student`;
+          tb.insertAdjacentHTML(
+            "beforeend",
+            `
       <tr>
         <td>${u.user_id}</td>
         <td>${u.name}</td>
         <td>${u.email}</td>
         <td><a href="${profileUrl}">👤 View</a></td>
       </tr>
-    `);
-  });
-}
-
-let adminGradeChart;
-
-// --- Overall Distribution ---
-function fetchOverall(){
-  fetch("/api/analytics/grades/admin/overall")
-    .then(r=>r.json())
-    .then(res=>{
-      if(res.status==="success") renderAdminGradeChart(res.data,"Overall Grade Distribution","bar");
-      else Swal.fire("Error",res.message,"error");
-    });
-}
-
-// --- Trends ---
-function fetchTrends(){
-  fetch("/api/analytics/grades/admin/trends?interval=month")
-    .then(r=>r.json())
-    .then(res=>{
-      if(res.status==="success") renderTrendChart(res.data);
-      else Swal.fire("Error",res.message,"error");
-    });
-}
-
-// --- Group by Role ---
-function fetchGroup(role){
-  fetch(`/api/analytics/grades/admin/group/${role}`)
-    .then(r=>r.json())
-    .then(res=>{
-      if(res.status==="success") renderGroupCharts(res.data,role);
-      else Swal.fire("Error",res.message,"error");
-    });
-}
-
-// --- Search by Role + ID/Email ---
-function searchGrades(){
-  const query=document.getElementById("searchGradeInput").value.trim();
-  const role=document.getElementById("roleSelect").value;
-  if(!query){ Swal.fire("Info","Enter ID or Email","info"); return; }
-  fetch(`/api/analytics/grades/admin/search?role=${role}&id_or_email=${encodeURIComponent(query)}`)
-    .then(r=>r.json())
-    .then(res=>{
-      if(res.status==="success") renderAdminGradeChart(res.data,`${role} ${query} Grade Distribution`,"bar");
-      else Swal.fire("Error",res.message,"error");
-    });
-}
-
-// --- Render single-user / overall distribution ---
-function renderAdminGradeChart(dist,title,chartType="bar"){
-  const ctx=document.getElementById("adminGradeChart").getContext("2d");
-  if(adminGradeChart) adminGradeChart.destroy();
-  adminGradeChart=new Chart(ctx,{
-    type: chartType,
-    data:{
-      labels:Object.keys(dist),
-      datasets:[{label:"Grades",data:Object.values(dist),
-        backgroundColor:['#4caf50','#2196f3','#ffeb3b','#ff9800','#f44336','#9c27b0']}]
-    },
-    options:{responsive:true,plugins:{legend:{display:false},title:{display:true,text:title}}}
-  });
-}
-
-// --- Render Trends ---
-function renderTrendChart(data){
-  const ctx=document.getElementById("adminGradeChart").getContext("2d");
-  if(adminGradeChart) adminGradeChart.destroy();
-  adminGradeChart=new Chart(ctx,{
-    type:"line",
-    data:{
-      labels:data.labels,
-      datasets:Object.keys(data.datasets).map(g=>({
-        label:g,
-        data:data.datasets[g],
-        fill:false,
-        borderColor:getGradeColor(g)
-      }))
-    },
-    options:{responsive:true,plugins:{title:{display:true,text:"Grade Trends Over Time"}}}
-  });
-}
-
-// --- Render Group Charts (many users) ---
-function renderGroupCharts(data,role){
-  const ctx=document.getElementById("adminGradeChart").getContext("2d");
-  if(adminGradeChart) adminGradeChart.destroy();
-  adminGradeChart=new Chart(ctx,{
-    type:"bar",
-    data:{
-      labels:Object.keys(data),
-      datasets:Object.keys(data[Object.keys(data)[0]].labels).map((_,i)=>({
-        label:Object.values(data)[0].labels[i],
-        data:Object.keys(data).map(uid=>Object.values(data[uid].values)[i]),
-        backgroundColor:getGradeColor(Object.values(data)[0].labels[i])
-      }))
-    },
-    options:{responsive:true,plugins:{title:{display:true,text:`Grade Distribution by ${role}`}},
-             scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}}}
-  });
-}
-function fetchAggregate(role){
-  fetch(`/api/analytics/grades/admin/aggregate/${role}`)
-    .then(r=>r.json())
-    .then(res=>{
-      if(res.status==="success"){
-        renderAdminGradeChart(res.data, `Aggregated ${role} Grades`,"bar");
-      } else {
-        Swal.fire("Error",res.message,"error");
+    `
+          );
+        });
       }
-    });
-}
 
-// --- Helper: consistent colors ---
-function getGradeColor(grade){
-  const colors={A:"#4caf50",B:"#2196f3",C:"#ffeb3b",D:"#ff9800",E:"#f44336",F:"#9c27b0"};
-  return colors[grade]||"#999";
-}
+      let adminGradeChart;
 
-// ---------------- Downloads ----------------
+      // --- Overall Distribution ---
+      function fetchOverall() {
+        fetch("/api/analytics/grades/admin/overall")
+          .then((r) => r.json())
+          .then((res) => {
+            if (res.status === "success")
+              renderAdminGradeChart(
+                res.data,
+                "Overall Grade Distribution",
+                "bar"
+              );
+            else Swal.fire("Error", res.message, "error");
+          });
+      }
 
-// Download chart as PNG
-function downloadChart(chart, filename="chart.png") {
-  const link = document.createElement("a");
-  link.href = chart.toBase64Image("image/png", 1.0);
-  link.download = filename;
-  link.click();
-}
+      // --- Trends ---
+      function fetchTrends() {
+        fetch("/api/analytics/grades/admin/trends?interval=month")
+          .then((r) => r.json())
+          .then((res) => {
+            if (res.status === "success") renderTrendChart(res.data);
+            else Swal.fire("Error", res.message, "error");
+          });
+      }
 
-// Download any HTML table as CSV
-function downloadTableCSV(tableId, filename="table.csv") {
-  const rows = Array.from(document.querySelectorAll(`#${tableId} tr`));
-  const csv = rows.map(row => {
-    const cols = Array.from(row.querySelectorAll("th,td"));
-    return cols.map(c => `"${c.innerText.replace(/"/g,'""')}"`).join(",");
-  }).join("\n");
+      // --- Group by Role ---
+      function fetchGroup(role) {
+        fetch(`/api/analytics/grades/admin/group/${role}`)
+          .then((r) => r.json())
+          .then((res) => {
+            if (res.status === "success") renderGroupCharts(res.data, role);
+            else Swal.fire("Error", res.message, "error");
+          });
+      }
 
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
+      // --- Search by Role + ID/Email ---
+      function searchGrades() {
+        const query = document.getElementById("searchGradeInput").value.trim();
+        const role = document.getElementById("roleSelect").value;
+        if (!query) {
+          Swal.fire("Info", "Enter ID or Email", "info");
+          return;
+        }
+        fetch(
+          `/api/analytics/grades/admin/search?role=${role}&id_or_email=${encodeURIComponent(
+            query
+          )}`
+        )
+          .then((r) => r.json())
+          .then((res) => {
+            if (res.status === "success")
+              renderAdminGradeChart(
+                res.data,
+                `${role} ${query} Grade Distribution`,
+                "bar"
+              );
+            else Swal.fire("Error", res.message, "error");
+          });
+      }
 
-// --- Export All as ZIP ---
-async function exportAll(){
-  const zip = new JSZip();
+      // --- Render single-user / overall distribution ---
+      function renderAdminGradeChart(dist, title, chartType = "bar") {
+        const ctx = document.getElementById("adminGradeChart").getContext("2d");
+        if (adminGradeChart) adminGradeChart.destroy();
+        adminGradeChart = new Chart(ctx, {
+          type: chartType,
+          data: {
+            labels: Object.keys(dist),
+            datasets: [
+              {
+                label: "Grades",
+                data: Object.values(dist),
+                backgroundColor: [
+                  "#4caf50",
+                  "#2196f3",
+                  "#ffeb3b",
+                  "#ff9800",
+                  "#f44336",
+                  "#9c27b0",
+                ],
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { display: false },
+              title: { display: true, text: title },
+            },
+          },
+        });
+      }
 
-  // Charts
-  if(adminGradeChart) zip.file("grades.png", adminGradeChart.toBase64Image().split(",")[1], {base64:true});
-  if(gradeChart) zip.file("system_stats.png", gradeChart.toBase64Image().split(",")[1], {base64:true});
-  if(historyChart) zip.file("system_history.png", historyChart.toBase64Image().split(",")[1], {base64:true});
-  if(gradeHistoryChart) zip.file("grade_history.png", gradeHistoryChart.toBase64Image().split(",")[1], {base64:true});
-  if(gradeChartLarge) zip.file("assignment_dist.png", gradeChartLarge.toBase64Image().split(",")[1], {base64:true});
+      // --- Render Trends ---
+      function renderTrendChart(data) {
+        const ctx = document.getElementById("adminGradeChart").getContext("2d");
+        if (adminGradeChart) adminGradeChart.destroy();
+        adminGradeChart = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: data.labels,
+            datasets: Object.keys(data.datasets).map((g) => ({
+              label: g,
+              data: data.datasets[g],
+              fill: false,
+              borderColor: getGradeColor(g),
+            })),
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              title: { display: true, text: "Grade Trends Over Time" },
+            },
+          },
+        });
+      }
 
-  // Tables
-  const tables = [
-    ["submissions-body","submissions.csv"],
-    ["assignments-body","assignments.csv"],
-    ["instructors-body","instructors.csv"],
-    ["students-body","students.csv"],
-    ["system-stats-body","system_stats.csv"],
-    ["issues-body","issues.csv"],
-    ["notification-body","notifications.csv"]
-  ];
-  tables.forEach(([id,f])=>{
-    const rows = [...document.querySelectorAll(`#${id} tr`)];
-    if(!rows.length) return;
-    const csv = rows.map(r=>[...r.querySelectorAll("th,td")].map(c=>`"${c.innerText.replace(/"/g,'""')}"`).join(",")).join("\n");
-    zip.file(f,csv);
-  });
+      // --- Render Group Charts (many users) ---
+      function renderGroupCharts(data, role) {
+        const ctx = document.getElementById("adminGradeChart").getContext("2d");
+        if (adminGradeChart) adminGradeChart.destroy();
+        adminGradeChart = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: Object.keys(data),
+            datasets: Object.keys(data[Object.keys(data)[0]].labels).map(
+              (_, i) => ({
+                label: Object.values(data)[0].labels[i],
+                data: Object.keys(data).map(
+                  (uid) => Object.values(data[uid].values)[i]
+                ),
+                backgroundColor: getGradeColor(
+                  Object.values(data)[0].labels[i]
+                ),
+              })
+            ),
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              title: { display: true, text: `Grade Distribution by ${role}` },
+            },
+            scales: {
+              x: { stacked: true },
+              y: { stacked: true, beginAtZero: true },
+            },
+          },
+        });
+      }
+      function fetchAggregate(role) {
+        fetch(`/api/analytics/grades/admin/aggregate/${role}`)
+          .then((r) => r.json())
+          .then((res) => {
+            if (res.status === "success") {
+              renderAdminGradeChart(
+                res.data,
+                `Aggregated ${role} Grades`,
+                "bar"
+              );
+            } else {
+              Swal.fire("Error", res.message, "error");
+            }
+          });
+      }
 
-  const blob = await zip.generateAsync({type:"blob"});
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = "dashboard_export.zip";
-  link.click();
-}
+      // --- Helper: consistent colors ---
+      function getGradeColor(grade) {
+        const colors = {
+          A: "#4caf50",
+          B: "#2196f3",
+          C: "#ffeb3b",
+          D: "#ff9800",
+          E: "#f44336",
+          F: "#9c27b0",
+        };
+        return colors[grade] || "#999";
+      }
 
+      // ---------------- Downloads ----------------
 
+      // Download chart as PNG
+      function downloadChart(chart, filename = "chart.png") {
+        const link = document.createElement("a");
+        link.href = chart.toBase64Image("image/png", 1.0);
+        link.download = filename;
+        link.click();
+      }
 
+      // Download any HTML table as CSV
+      function downloadTableCSV(tableId, filename = "table.csv") {
+        const rows = Array.from(document.querySelectorAll(`#${tableId} tr`));
+        const csv = rows
+          .map((row) => {
+            const cols = Array.from(row.querySelectorAll("th,td"));
+            return cols
+              .map((c) => `"${c.innerText.replace(/"/g, '""')}"`)
+              .join(",");
+          })
+          .join("\n");
 
+        const blob = new Blob([csv], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
 
+      // --- Export All as ZIP ---
+      async function exportAll() {
+        const zip = new JSZip();
 
-    // ------------------ Init ------------------
-    window.onload = () => {
-      filterIssues('open');
-      fetchSystemStats();
-      fetchSystemHistory();
-       searchSubmissions();
-  fetchAssignments();
-  fetchInstructors();
-  fetchStudents();
-  fetchOverall(); 
+        // Charts
+        if (adminGradeChart)
+          zip.file(
+            "grades.png",
+            adminGradeChart.toBase64Image().split(",")[1],
+            { base64: true }
+          );
+        if (gradeChart)
+          zip.file(
+            "system_stats.png",
+            gradeChart.toBase64Image().split(",")[1],
+            { base64: true }
+          );
+        if (historyChart)
+          zip.file(
+            "system_history.png",
+            historyChart.toBase64Image().split(",")[1],
+            { base64: true }
+          );
+        if (gradeHistoryChart)
+          zip.file(
+            "grade_history.png",
+            gradeHistoryChart.toBase64Image().split(",")[1],
+            { base64: true }
+          );
+        if (gradeChartLarge)
+          zip.file(
+            "assignment_dist.png",
+            gradeChartLarge.toBase64Image().split(",")[1],
+            { base64: true }
+          );
 
-    };
+        // Tables
+        const tables = [
+          ["submissions-body", "submissions.csv"],
+          ["assignments-body", "assignments.csv"],
+          ["instructors-body", "instructors.csv"],
+          ["students-body", "students.csv"],
+          ["system-stats-body", "system_stats.csv"],
+          ["issues-body", "issues.csv"],
+          ["notification-body", "notifications.csv"],
+        ];
+        tables.forEach(([id, f]) => {
+          const rows = [...document.querySelectorAll(`#${id} tr`)];
+          if (!rows.length) return;
+          const csv = rows
+            .map((r) =>
+              [...r.querySelectorAll("th,td")]
+                .map((c) => `"${c.innerText.replace(/"/g, '""')}"`)
+                .join(",")
+            )
+            .join("\n");
+          zip.file(f, csv);
+        });
+
+        const blob = await zip.generateAsync({ type: "blob" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "dashboard_export.zip";
+        link.click();
+      }
+
+      // ------------------ Init ------------------
+      window.onload = () => {
+        filterIssues("open");
+        fetchSystemStats();
+        fetchSystemHistory();
+        searchSubmissions();
+        fetchAssignments();
+        fetchInstructors();
+        fetchStudents();
+        fetchOverall();
+      };
     </script>
   </body>
 </html>
-{% include 'partials/footer.html' %}

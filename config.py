@@ -6,7 +6,7 @@ class Config:
     EMAIL_SENDER = os.getenv("EMAIL_SENDER")
     EMAIL_PASSWORD_SENDER = os.getenv("EMAIL_PASSWORD_SENDER")
     FLASK_SECRET_KEY = os.getenv("FLASK_SECRET_KEY")
-    MOBILE_SENDER_NUMBER = os.getenv("FAST2SMS_NUMBER")
+    MOBILE_SENDER_NUMBER = os.getenv("Admin_mobile_number")
     FAST2SMS_API_KEY = os.getenv("FAST2SMS_API_KEY")
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     FAST2SMS_SENDER_ID = os.getenv("FAST2SMS_SENDER_ID")

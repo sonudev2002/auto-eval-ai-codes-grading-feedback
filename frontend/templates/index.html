@@ -156,6 +156,43 @@
     </style>
   </head>
   <body style="margin: 0; display: flex; flex-direction: column; min-height: 100vh">
+    <!-- 🌐 Public Header (Index Page) -->
+<header style="
+  background: linear-gradient(90deg, #ae75d7f6, #36dbc5ee);
+  color: #ffffff;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  font-family: 'Inter', sans-serif;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+">
+  <!-- 🔹 Left: Logo + Brand -->
+  <div style="display: flex; align-items: center; gap: 10px;">
+    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="AutoEval Logo"
+         style="height: 60px; width: 50px; border-radius: 50%; object-fit: cover;">
+    <div style="display: flex; flex-direction: column; line-height: 1.2;">
+      <span style="font-size: 1.5rem; font-weight: 600;">AutoEval</span>
+      <span style="font-size: 0.95rem; color: #e8dbdbff;">AI Code Grading</span>
+    </div>
+  </div>
+
+  <!-- 🔹 Right: Nav Links -->
+  <nav style="
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+  ">
+   
+    <a href="/about" style="color: #fff; text-decoration: none; font-weight: 500; transition: 0.2s;">About</a>
+    <a href="/contact" style="color: #fff; text-decoration: none; font-weight: 500; transition: 0.2s;">Contact</a>
+    <a href="/privacy" style="color: #fff; text-decoration: none; font-weight: 500; transition: 0.2s;">Privacy</a>
+  </nav>
+</header>
+
     <div class="overlay"></div>
     <div style="flex: 1; display: flex; justify-content: center; align-items: flex-start; padding: 40px 0;">
       <div class="container">
@@ -595,6 +632,7 @@
     </script>
 
     <!-- include footer inside body (moved here so it renders correctly) -->
+     
     {% include 'partials/footer.html' %}
   </body>
 </html>

@@ -193,20 +193,25 @@
     </div>
 
     <!-- Right: Profile -->
-    <div class="right-section">
-      {% if session['user'].get('profile_picture') %}
-        <img src="{{ session['user']['profile_picture'] }}" alt="User" class="profile-pic">
-      {% else %}
-        <img src="{{ url_for('static', filename='images/default_user.jpg') }}" alt="User" class="profile-pic">
-      {% endif %}
+ <!-- Right: Profile -->
+<div class="right-section">
+  {% set current_user = session.get('user', {}) %}
+  {% set profile_pic = current_user.get('profile_picture') %}
+  
+  {% if profile_pic %}
+    <img src="{{ profile_pic }}" alt="User" class="profile-pic">
+  {% else %}
+    <img src="{{ url_for('static', filename='images/default_user.jpg') }}" alt="User" class="profile-pic">
+  {% endif %}
 
-      <span class="user-name">{{ session['user']['full_name'] }}</span>
+  <span class="user-name">{{ current_user.get('full_name', 'Guest User') }}</span>
 
-      <!-- Hamburger -->
-      <div class="hamburger" onclick="toggleMenu()" title="Menu">
-        <span></span><span></span><span></span>
-      </div>
-    </div>
+  <!-- Hamburger -->
+  <div class="hamburger" onclick="toggleMenu()" title="Menu">
+    <span></span><span></span><span></span>
+  </div>
+</div>
+
 
     <!-- Dropdown Menu -->
     <div id="menu" class="menu">
