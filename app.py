@@ -33,7 +33,7 @@ from flask import (
 from flask_cors import CORS
 
 load_dotenv()  # Load environment variables
-# Add backend directory to Python path
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "backend")))
 # --- Import Config and Backend Modules ---
 from config import Config

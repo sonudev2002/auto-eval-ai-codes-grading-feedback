@@ -175,7 +175,7 @@ footer {
       <li class="nav-item">
         <a class="nav-link" data-bs-toggle="tab" href="#delete" role="tab">Delete Assignment</a>
       </li>
-      {% if session['role'] == 'admin' %}
+      {% if session['user']['role'] == 'admin' %}
       <li class="nav-item">
         <a class="nav-link" data-bs-toggle="tab" href="#repo" role="tab">Repository Management</a>
       </li>
