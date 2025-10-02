@@ -3,6 +3,7 @@ import uuid
 import time
 import smtplib
 import requests
+import random
 from flask import request, session, jsonify, redirect, url_for, current_app, Response
 from email.message import EmailMessage
 from werkzeug.security import generate_password_hash, check_password_hash
