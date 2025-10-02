@@ -31,7 +31,7 @@ def submit_issue(
 
         # Insert issue
         cursor.execute(
-            """INSERT INTO Reported_Issue (user_id, issue_type, description)
+            """INSERT INTO reported_issue (user_id, issue_type, description)
                VALUES (%s, %s, %s)""",
             (user_id, issue_type, description),
         )
@@ -45,7 +45,7 @@ def submit_issue(
                         key = make_key_for_file(screenshot_file)
                         url = upload_fileobj(screenshot_file.stream, key)
                         cursor.execute(
-                            """INSERT INTO Screenshots (issue_id, screenshot_path) VALUES (%s, %s)""",
+                            """INSERT INTO screenshots (issue_id, screenshot_path) VALUES (%s, %s)""",
                             (issue_id, url),
                         )
                     else:
@@ -82,7 +82,7 @@ def get_user_issues(user_id: int) -> List[Dict[str, Any]]:
         cursor.execute(
             """SELECT i.issue_id, i.issue_type, i.description, i.status, 
                       i.reported_at, i.resolved_at
-               FROM Reported_Issue i
+               FROM reported_issue i
                WHERE i.user_id = %s
                ORDER BY i.reported_at DESC""",
             (user_id,),
@@ -110,7 +110,7 @@ def get_screenshots(issue_id: int) -> List[str]:
 
         cursor.execute(
             """SELECT screenshot_path 
-               FROM Screenshots
+               FROM screenshots
                WHERE issue_id = %s""",
             (issue_id,),
         )
@@ -138,14 +138,20 @@ def get_all_issues() -> List[Dict[str, Any]]:
         cursor = conn.cursor(dictionary=True)
 
         cursor.execute(
-            """SELECT i.issue_id, u.name AS reporter, i.issue_type, 
-                      i.description, i.status, i.reported_at, i.resolved_at,
-                      GROUP_CONCAT(s.screenshot_path) AS screenshots
-               FROM Reported_Issue i
-               JOIN User_Profile u ON i.user_id = u.user_id
-               LEFT JOIN Screenshots s ON i.issue_id = s.issue_id
-               GROUP BY i.issue_id
-               ORDER BY i.reported_at DESC"""
+            """SELECT i.issue_id, 
+       CONCAT(u.first_name, ' ', u.last_name) AS reporter, 
+       i.issue_type, 
+       i.description, 
+       i.status, 
+       i.reported_at, 
+       i.resolved_at,
+       GROUP_CONCAT(s.screenshot_path) AS screenshots
+FROM reported_issue i
+JOIN user_profile u ON i.user_id = u.user_id
+LEFT JOIN screenshots s ON i.issue_id = s.issue_id
+GROUP BY i.issue_id
+ORDER BY i.reported_at DESC
+"""
         )
 
         issues = cast(List[Dict[str, Any]], cursor.fetchall())
@@ -172,7 +178,7 @@ def resolve_issue(issue_id: int) -> Dict[str, Any]:
         cursor = conn.cursor()
 
         cursor.execute(
-            """UPDATE Reported_Issue
+            """UPDATE reported_issue
                SET status = 'resolved', resolved_at = NOW()
                WHERE issue_id = %s""",
             (issue_id,),

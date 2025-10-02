@@ -257,8 +257,8 @@ class SubmissionService:
                 """
                 SELECT cs.submission_id, cs.assignment_id, a.title AS question_title,
                        cs.user_id, cs.language, cs.submitted_on
-                FROM Code_Submission cs
-                JOIN Assignment a ON cs.assignment_id = a.assignment_id
+                FROM code_submission cs
+                JOIN assignment a ON cs.assignment_id = a.assignment_id
                 WHERE cs.submission_id = %s
                 """,
                 (submission_id,),
@@ -267,7 +267,7 @@ class SubmissionService:
 
             # 2. Code Evaluation
             self.cursor.execute(
-                "SELECT ce.* FROM Code_Evaluation ce WHERE ce.submission_id = %s",
+                "SELECT ce.* FROM code_evaluation ce WHERE ce.submission_id = %s",
                 (submission_id,),
             )
             result["analysis"] = self.cursor.fetchone()
@@ -284,8 +284,8 @@ class SubmissionService:
             self.cursor.execute(
                 """
                 SELECT pm.matched_submission_id, ce.plagiarism_score
-                FROM Plagiarism_match pm
-                JOIN Code_Evaluation ce ON pm.evaluation_id = ce.code_evaluation_id
+                FROM plagiarism_match pm
+                JOIN code_evaluation ce ON pm.evaluation_id = ce.code_evaluation_id
                 WHERE ce.submission_id = %s
                 """,
                 (submission_id,),
@@ -297,8 +297,8 @@ class SubmissionService:
                 """
                 SELECT tr.testcase_id, tc.input_data, tc.expected_data, 
                        tr.output, tr.passed, tr.execution_time
-                FROM Test_Case_Result tr
-                JOIN Test_Cases tc ON tr.testcase_id = tc.testcase_id
+                FROM test_case_result tr
+                JOIN test_cases tc ON tr.testcase_id = tc.testcase_id
                 WHERE tr.submission_id = %s
                 """,
                 (submission_id,),
@@ -318,8 +318,3 @@ class SubmissionService:
 
 def get_submission_details(submission_id: int):
     return SubmissionService().get_submission_details(submission_id)
-
-
-if __name__ == "__main__":
-    full_result = get_submission_details(53)
-    print(full_result)

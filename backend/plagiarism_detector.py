@@ -108,7 +108,7 @@ def load_submissions_from_db() -> Dict[str, str]:
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
 
-    cursor.execute("SELECT submission_id, code_path FROM Code_Submission")
+    cursor.execute("SELECT submission_id, code_path FROM code_submission")
     submissions = {}
 
     # Base directory where codes are stored
@@ -156,7 +156,7 @@ def save_results(
     # Update Code_Evaluation with plagiarism_score
     cursor.execute(
         """
-        UPDATE Code_Evaluation
+        UPDATE code_evaluation
         SET plagiarism_score = %s
         WHERE submission_id = %s
     """,
@@ -167,9 +167,9 @@ def save_results(
     for mid, _ in matches:
         cursor.execute(
             """
-            INSERT INTO Plagiarism_match (evaluation_id, matched_submission_id)
+            INSERT INTO plagiarism_match (evaluation_id, matched_submission_id)
             VALUES (
-                (SELECT code_evaluation_id FROM Code_Evaluation WHERE submission_id=%s),
+                (SELECT code_evaluation_id FROM code_evaluation WHERE submission_id=%s),
                 %s
             )
         """,

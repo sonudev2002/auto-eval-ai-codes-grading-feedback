@@ -561,9 +561,9 @@ class AssignmentsStudent:
                 u.first_name AS instructor_name, 
                 d.difficulty_types AS difficulty_name,
                 a.due_date
-            FROM Assignment a
-            JOIN User_Profile u ON a.instructor_id = u.user_id
-            JOIN Difficulty_Level d ON a.difficulty_level = d.level_id
+            FROM assignment a
+            JOIN user_profile u ON a.instructor_id = u.user_id
+            JOIN difficulty_level d ON a.difficulty_level = d.level_id
         """
         keys = [
             "repository_id",
@@ -619,9 +619,9 @@ class AssignmentsStudent:
                 u.first_name AS instructor_name, 
                 d.difficulty_types AS difficulty_name, 
                 a.due_date
-            FROM Assignment a
-            JOIN User_Profile u ON a.instructor_id = u.user_id
-            JOIN Difficulty_Level d ON a.difficulty_level = d.level_id
+            FROM assignment a
+            JOIN user_profile u ON a.instructor_id = u.user_id
+            JOIN difficulty_level d ON a.difficulty_level = d.level_id
             WHERE a.repository_id = %s
             ORDER BY a.due_date ASC
         """
@@ -702,10 +702,10 @@ class Code_editor:
                         dl.marks,
                         ar.repository_id,
                         ar.repo_title
-                    FROM Assignment a
-                    LEFT JOIN Difficulty_Level dl ON a.difficulty_level = dl.level_id
-                    LEFT JOIN Assignment_Repository ar ON a.repository_id = ar.repository_id
-                    LEFT JOIN User_Profile u ON a.instructor_id = u.user_id
+                    FROM assignment a
+                    LEFT JOIN difficulty_level dl ON a.difficulty_level = dl.level_id
+                    LEFT JOIN assignment_repository ar ON a.repository_id = ar.repository_id
+                    LEFT JOIN user_profile u ON a.instructor_id = u.user_id
                     WHERE a.assignment_id = %s
                     """,
                     (ass_id,),
@@ -762,7 +762,7 @@ class Code_editor:
                 cursor.execute(
                     """
                     SELECT example_id, description
-                    FROM Example
+                    FROM example
                     WHERE assignment_id = %s
                     ORDER BY example_id ASC
                     """,
@@ -786,7 +786,7 @@ class Code_editor:
                 cursor.execute(
                     """
                     SELECT testcase_id, input_data, expected_data
-                    FROM Test_Cases
+                    FROM test_cases
                     WHERE assignment_id = %s
                     ORDER BY testcase_id ASC
                     """,
@@ -803,7 +803,7 @@ class Code_editor:
                     cursor.execute(
                         """
                         SELECT submission_id, user_id, submitted_on, language, code_path
-                        FROM Code_Submission
+                        FROM code_submission
                         WHERE assignment_id = %s
                         ORDER BY submitted_on DESC
                         """,
@@ -813,7 +813,7 @@ class Code_editor:
                     cursor.execute(
                         """
                         SELECT submission_id, user_id, submitted_on, language, code_path
-                        FROM Code_Submission
+                        FROM code_submission
                         WHERE assignment_id = %s AND user_id = %s
                         ORDER BY submitted_on DESC
                         """,

@@ -42,7 +42,7 @@ class EvaluationPipeline:
             cursor = conn.cursor(dictionary=True)
 
             cursor.execute(
-                "SELECT testcase_id, input_data, expected_data FROM Test_Cases WHERE assignment_id = %s",
+                "SELECT testcase_id, input_data, expected_data FROM test_cases WHERE assignment_id = %s",
                 (assignment_id,),
             )
             testcases = cursor.fetchall()
@@ -189,7 +189,7 @@ class EvaluationPipeline:
             cursor = conn.cursor()
 
             cursor.execute(
-                "SELECT COALESCE(MAX(version), 0) FROM Code_Submission WHERE user_id = %s AND assignment_id = %s",
+                "SELECT COALESCE(MAX(version), 0) FROM code_submission WHERE user_id = %s AND assignment_id = %s",
                 (student_id, assignment_id),
             )
             latest_version = cursor.fetchone()[0]
@@ -312,7 +312,7 @@ class EvaluationPipeline:
             conn = get_connection()
             cursor = conn.cursor()
             cursor.execute(
-                """UPDATE Code_Evaluation
+                """UPDATE code_evaluation
                    SET feedback=%s, grade=%s, score=%s,
                        plagiarism_score=%s,
                        total_testcases=%s, passed_testcases=%s,

@@ -1,4 +1,3 @@
-# backend/analytics.py
 import json
 import logging
 import os
@@ -154,37 +153,37 @@ class SystemAnalytics(BaseAnalytics):
     def collect_data(self) -> Dict[str, Any]:
         """Gather live system metrics (safe to call on demand)."""
         total_students = self.fetch_one(
-            "SELECT COUNT(*) AS cnt FROM User_Profile WHERE role='student'",
+            "SELECT COUNT(*) AS cnt FROM user_profile WHERE role='student'",
             (),
             {"cnt": 0},
         )["cnt"]
         total_instructors = self.fetch_one(
-            "SELECT COUNT(*) AS cnt FROM User_Profile WHERE role='instructor'",
+            "SELECT COUNT(*) AS cnt FROM user_profile WHERE role='instructor'",
             (),
             {"cnt": 0},
         )["cnt"]
         total_assignments = self.fetch_one(
-            "SELECT COUNT(*) AS cnt FROM Assignment", (), {"cnt": 0}
+            "SELECT COUNT(*) AS cnt FROM assignment", (), {"cnt": 0}
         )["cnt"]
         active_users_today = self.fetch_one(
-            "SELECT COUNT(DISTINCT user_id) AS cnt FROM Login_Log WHERE DATE(login_time)=CURDATE()",
+            "SELECT COUNT(DISTINCT user_id) AS cnt FROM login_log WHERE DATE(login_time)=CURDATE()",
             (),
             {"cnt": 0},
         )["cnt"]
         avg_score_row = self.fetch_one(
-            "SELECT AVG(score) AS avg FROM Code_Evaluation", (), {"avg": 0.0}
+            "SELECT AVG(score) AS avg FROM code_evaluation", (), {"avg": 0.0}
         )
         avg_score = round((avg_score_row["avg"] or 0.0), 2)
         total_submissions = self.fetch_one(
-            "SELECT COUNT(*) AS cnt FROM Code_Submission", (), {"cnt": 0}
+            "SELECT COUNT(*) AS cnt FROM code_submission", (), {"cnt": 0}
         )["cnt"]
         new_users_last_week = self.fetch_one(
-            "SELECT COUNT(*) AS cnt FROM User_Profile WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)",
+            "SELECT COUNT(*) AS cnt FROM user_profile WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)",
             (),
             {"cnt": 0},
         )["cnt"]
 
-        scores = self.fetch_all("SELECT score FROM Code_Evaluation")
+        scores = self.fetch_all("SELECT score FROM code_evaluation")
         grade_distribution = self._grade_distribution_from_scores(scores)
 
         return {
@@ -199,12 +198,11 @@ class SystemAnalytics(BaseAnalytics):
         }
 
     def save_snapshot(self, data: Dict[str, Any]) -> bool:
-        """Persist a system snapshot into System_Statistics."""
         try:
             with DBConnection() as cur:
                 cur.execute(
                     """
-                    INSERT INTO System_Statistics
+                    INSERT INTO system_statistics
                     (total_students, total_instructors, total_assignments, active_users_today,
                      average_score, total_submissions, new_users_last_week, grade_distribution)
                     VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
@@ -233,7 +231,7 @@ class SystemAnalytics(BaseAnalytics):
                 cur.execute(
                     """
                     SELECT *
-                    FROM System_Statistics
+                    FROM system_statistics
                     ORDER BY timestamp DESC
                     LIMIT 1
                     """
@@ -265,7 +263,7 @@ class SystemAnalytics(BaseAnalytics):
         rows = self.fetch_all(
             """
                 SELECT *
-                FROM System_Statistics
+                FROM system_statistics
                 ORDER BY timestamp ASC
                 """
         )
@@ -310,7 +308,7 @@ class AssignmentAnalyticsService:
         """Calculate analytics for a single assignment. Returns None if no submissions."""
         with DBConnection() as cur:
             cur.execute(
-                "SELECT COUNT(*) AS total FROM Code_Submission WHERE assignment_id=%s",
+                "SELECT COUNT(*) AS total FROM code_submission WHERE assignment_id=%s",
                 (assignment_id,),
             )
             total_row = cur.fetchone()
@@ -325,8 +323,8 @@ class AssignmentAnalyticsService:
                   SUM(CASE WHEN ce.score >= 40 THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0) * 100 AS pass_percent,
                   SUM(CASE WHEN ce.plagiarism_score > 50 THEN 1 ELSE 0 END) AS plagiarism_cases,
                   AVG(ce.average_execution_time) AS avg_time
-                FROM Code_Evaluation ce
-                JOIN Code_Submission cs ON ce.submission_id = cs.submission_id
+                FROM code_evaluation ce
+                JOIN code_submission cs ON ce.submission_id = cs.submission_id
                 WHERE cs.assignment_id = %s
                 """,
                 (assignment_id,),
@@ -336,8 +334,8 @@ class AssignmentAnalyticsService:
             cur.execute(
                 """
                 SELECT feedback, COUNT(*) AS cnt
-                FROM Code_Evaluation ce
-                JOIN Code_Submission cs ON ce.submission_id = cs.submission_id
+                FROM code_evaluation ce
+                JOIN code_submission cs ON ce.submission_id = cs.submission_id
                 WHERE cs.assignment_id = %s AND ce.feedback IS NOT NULL
                 GROUP BY feedback ORDER BY cnt DESC LIMIT 1
                 """,
@@ -362,7 +360,7 @@ class AssignmentAnalyticsService:
             try:
                 cur.execute(
                     """
-                    INSERT INTO Assignment_Analytics
+                    INSERT INTO assignment_analytics
                     (assignment_id, total_submission, average_score, plagiarism_cases,
                      pass_percentage, average_time, most_common_error)
                     VALUES (%s,%s,%s,%s,%s,%s,%s)
@@ -406,7 +404,7 @@ class AssignmentAnalyticsService:
     def fetch_assignment(self, assignment_id: int) -> Optional[Dict[str, Any]]:
         with DBConnection() as cur:
             cur.execute(
-                "SELECT * FROM Assignment_Analytics WHERE assignment_id=%s",
+                "SELECT * FROM assignment_analytics WHERE assignment_id=%s",
                 (assignment_id,),
             )
             row = cur.fetchone()
@@ -419,7 +417,7 @@ class AssignmentAnalyticsService:
     def update_all(self) -> Dict[int, bool]:
         result = {}
         with DBConnection() as cur:
-            cur.execute("SELECT assignment_id FROM Assignment")
+            cur.execute("SELECT assignment_id FROM assignment")
             assignments = cur.fetchall()
         for a in assignments:
             aid = a["assignment_id"]
@@ -487,7 +485,7 @@ class DifficultyAnalyticsBase:
                 f"""
                 SELECT dl.difficulty_types, s.*
                 FROM {self.table} s
-                JOIN Difficulty_Level dl ON s.difficulty_level = dl.level_id
+                JOIN difficulty_level dl ON s.difficulty_level = dl.level_id
                 WHERE s.user_id=%s
                 """,
                 (user_id,),
@@ -500,7 +498,7 @@ class DifficultyAnalyticsBase:
                 f"""
                 SELECT u.user_id, u.first_name, u.last_name, s.*
                 FROM {self.table} s
-                JOIN User_Profile u ON s.user_id=u.user_id
+                JOIN user_profile u ON s.user_id=u.user_id
                 WHERE s.difficulty_level = %s
                 """,
                 (level_id,),
@@ -513,7 +511,7 @@ class DifficultyAnalyticsBase:
                 f"""
                 SELECT u.user_id, u.first_name, u.last_name, dl.difficulty_types, s.*
                 FROM {self.table} s
-                JOIN User_Profile u ON s.user_id=u.user_id
+                JOIN user_profile u ON s.user_id=u.user_id
                 JOIN Difficulty_Level dl ON s.difficulty_level=dl.level_id
                 """
             )
@@ -534,10 +532,10 @@ class DifficultyAnalyticsBase:
                   AVG(ce.score) AS average_score,
                   SUM(CASE WHEN ce.score >= 40 THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0) * 100 AS average_pass_rate,
                   AVG(fs.feedback_score) AS average_feedback_score
-                FROM Assignment a
-                JOIN Code_Submission cs ON a.assignment_id = cs.assignment_id
-                LEFT JOIN Code_Evaluation ce ON cs.submission_id = ce.submission_id
-                LEFT JOIN Feedback_Score fs ON cs.submission_id = fs.submission_id
+                FROM assignment a
+                JOIN code_submission cs ON a.assignment_id = cs.assignment_id
+                LEFT JOIN code_evaluation ce ON cs.submission_id = ce.submission_id
+                LEFT JOIN feedback_score fs ON cs.submission_id = fs.submission_id
                 WHERE cs.user_id=%s AND a.difficulty_level=%s
                 """,
                 (user_id, level_id),
@@ -557,7 +555,7 @@ class DifficultyAnalyticsBase:
         try:
             # fetch all levels
             with DBConnection() as cur:
-                cur.execute("SELECT level_id FROM Difficulty_Level")
+                cur.execute("SELECT level_id FROM difficulty_level")
                 levels = cur.fetchall()
 
             with DBConnection() as cur:
@@ -597,7 +595,7 @@ class DifficultyAnalyticsBase:
         try:
             with DBConnection() as cur:
                 cur.execute(
-                    "SELECT user_id FROM User_Profile WHERE role IN ('student','instructor')"
+                    "SELECT user_id FROM user_profile WHERE role IN ('student','instructor')"
                 )
                 users = cur.fetchall()
             for u in users:
@@ -610,12 +608,12 @@ class DifficultyAnalyticsBase:
 
 class StudentDifficultyAnalytics(DifficultyAnalyticsBase):
     def __init__(self):
-        super().__init__("Student_Difficulty_Stats")
+        super().__init__("student_difficulty_stats")
 
 
 class InstructorDifficultyAnalytics(DifficultyAnalyticsBase):
     def __init__(self):
-        super().__init__("Instructor_Difficulty_Stats")
+        super().__init__("instructor_difficulty_stats")
 
 
 # ---------------------------
@@ -657,7 +655,7 @@ class PerformanceAnalyticsBase:
         try:
             with DBConnection() as cur:
                 cur.execute(
-                    "SELECT user_id FROM User_Profile WHERE role IN ('student','instructor')"
+                    "SELECT user_id FROM user_profile WHERE role IN ('student','instructor')"
                 )
                 users = cur.fetchall()
             for u in users:
@@ -670,7 +668,7 @@ class PerformanceAnalyticsBase:
 
 class StudentPerformanceAnalytics(PerformanceAnalyticsBase):
     def __init__(self):
-        super().__init__("Student_Performance_Analytics")
+        super().__init__("student_performance_analytics")
 
     def update_user(self, user_id: int) -> bool:
         try:
@@ -684,9 +682,9 @@ class StudentPerformanceAnalytics(PerformanceAnalyticsBase):
                       COUNT(DISTINCT cs.assignment_id) AS assignments_submitted,
                       SUM(CASE WHEN ce.plagiarism_score > 50 THEN 1 ELSE 0 END) AS plagiarism_incidents,
                       AVG(fs.feedback_score) AS avg_feedback
-                    FROM Code_Submission cs
-                    LEFT JOIN Code_Evaluation ce ON cs.submission_id=ce.submission_id
-                    LEFT JOIN Feedback_Score fs ON cs.submission_id=fs.submission_id
+                    FROM code_submission cs
+                    LEFT JOIN code_evaluation ce ON cs.submission_id=ce.submission_id
+                    LEFT JOIN feedback_score fs ON cs.submission_id=fs.submission_id
                     WHERE cs.user_id=%s
                     """,
                     (user_id,),
@@ -700,7 +698,7 @@ class StudentPerformanceAnalytics(PerformanceAnalyticsBase):
                 avg_feedback = float(agg.get("avg_feedback") or 0.0)
 
                 # completion_rate: (distinct assignments submitted) / (total assignments) * 100
-                cur.execute("SELECT COUNT(*) AS total_assignments FROM Assignment")
+                cur.execute("SELECT COUNT(*) AS total_assignments FROM assignment")
                 total_assignments = cur.fetchone().get("total_assignments") or 0
                 completion_rate = (
                     (assignments_submitted / total_assignments * 100.0)
@@ -729,7 +727,7 @@ class StudentPerformanceAnalytics(PerformanceAnalyticsBase):
                 # upsert into student performance table
                 cur.execute(
                     """
-                    INSERT INTO Student_Performance_Analytics
+                    INSERT INTO student_performance_analytics
                     (user_id, average_score, completion_rate, pass_rate,
                      plagiarism_incidents, performance_band, total_assignments, performance_level, last_updated)
                     VALUES (%s,%s,%s,%s,%s,%s,%s,%s,NOW())
@@ -757,14 +755,14 @@ class StudentPerformanceAnalytics(PerformanceAnalyticsBase):
             return True
         except Exception:
             logger.exception(
-                "StudentPerformanceAnalytics.update_user failed for %s", user_id
+                "studentPerformanceAnalytics.update_user failed for %s", user_id
             )
             return False
 
 
 class InstructorPerformanceAnalytics(PerformanceAnalyticsBase):
     def __init__(self):
-        super().__init__("Instructor_Performance_Analytics")
+        super().__init__("instructor_performance_analytics")
 
     def update_user(self, user_id: int) -> bool:
         try:
@@ -779,10 +777,10 @@ class InstructorPerformanceAnalytics(PerformanceAnalyticsBase):
                       SUM(CASE WHEN ce.score >= 40 THEN 1 ELSE 0 END) / NULLIF(COUNT(ce.score),0) * 100 AS avg_pass_rate,
                       SUM(CASE WHEN ce.plagiarism_score > 50 THEN 1 ELSE 0 END) / NULLIF(COUNT(ce.score),0) * 100 AS plagiarism_rate,
                       AVG(fs.feedback_score) AS avg_feedback
-                    FROM Assignment a
-                    LEFT JOIN Code_Submission cs ON a.assignment_id = cs.assignment_id
-                    LEFT JOIN Code_Evaluation ce ON cs.submission_id = ce.submission_id
-                    LEFT JOIN Feedback_Score fs ON cs.submission_id = fs.submission_id
+                    FROM assignment a
+                    LEFT JOIN code_submission cs ON a.assignment_id = cs.assignment_id
+                    LEFT JOIN code_evaluation ce ON cs.submission_id = ce.submission_id
+                    LEFT JOIN feedback_score fs ON cs.submission_id = fs.submission_id
                     WHERE a.instructor_id=%s
                     """,
                     (user_id,),
@@ -802,7 +800,7 @@ class InstructorPerformanceAnalytics(PerformanceAnalyticsBase):
 
                 cur.execute(
                     """
-                    INSERT INTO Instructor_Performance_Analytics
+                    INSERT INTO instructor_performance_analytics
                     (user_id, total_assignments_created, total_submissions_received, overall_avg_score,
                      avg_pass_rate, plagiarism_rate, feedback_score_avg, responsiveness_score, consistency_score, last_updated)
                     VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())
@@ -855,10 +853,10 @@ class InstructorAnalytics(BaseAnalytics):
        COALESCE(AVG(aa.pass_percentage), 0) AS pass_percentage,
        COALESCE(SUM(aa.plagiarism_cases), 0) AS plagiarism_cases,
        COALESCE(AVG(aa.average_time), 0)    AS average_time
-FROM Assignment a
+FROM assignment a
 JOIN assignment_repository r 
   ON a.repository_id = r.repository_id
-LEFT JOIN Assignment_Analytics aa 
+LEFT JOIN assignment_analytics aa 
   ON a.assignment_id = aa.assignment_id
 WHERE a.instructor_id = %s
 GROUP BY a.assignment_id, a.title, r.repository_id, r.repo_title
@@ -875,11 +873,11 @@ ORDER BY a.assignment_id DESC;
             SELECT AVG(spa.completion_rate) AS avg_completion,
                    AVG(spa.pass_rate) AS avg_pass,
                    SUM(spa.plagiarism_incidents) AS total_plagiarism
-            FROM Student_Performance_Analytics spa
+            FROM student_performance_analytics spa
             WHERE spa.user_id IN (
                 SELECT DISTINCT cs.user_id
-                FROM Code_Submission cs
-                JOIN Assignment a ON cs.assignment_id = a.assignment_id
+                FROM code_submission cs
+                JOIN assignment a ON cs.assignment_id = a.assignment_id
                 WHERE a.instructor_id = %s
             )
             """,
@@ -891,9 +889,9 @@ ORDER BY a.assignment_id DESC;
         rows = self.fetch_all(
             """
             SELECT a.title, AVG(fs.feedback_score) AS avg_feedback
-            FROM Feedback_Score fs
-            JOIN Code_Submission cs ON fs.submission_id = cs.submission_id
-            JOIN Assignment a ON cs.assignment_id = a.assignment_id
+            FROM feedback_score fs
+            JOIN code_submission cs ON fs.submission_id = cs.submission_id
+            JOIN assignment a ON cs.assignment_id = a.assignment_id
             WHERE a.instructor_id = %s
             GROUP BY a.assignment_id
             """,
@@ -908,9 +906,9 @@ ORDER BY a.assignment_id DESC;
         scores = self.fetch_all(
             """
             SELECT ce.score
-            FROM Code_Evaluation ce
-            JOIN Code_Submission cs ON ce.submission_id = cs.submission_id
-            JOIN Assignment a ON cs.assignment_id = a.assignment_id
+            FROM code_evaluation ce
+            JOIN code_submission cs ON ce.submission_id = cs.submission_id
+            JOIN assignment a ON cs.assignment_id = a.assignment_id
             WHERE a.instructor_id = %s
             """,
             (instructor_id,),
@@ -921,9 +919,9 @@ ORDER BY a.assignment_id DESC;
         rows = self.fetch_all(
             """
             SELECT DATE(cs.submitted_on) AS date, AVG(ce.score) AS avg_score
-            FROM Code_Submission cs
-            JOIN Code_Evaluation ce ON cs.submission_id = ce.submission_id
-            JOIN Assignment a ON cs.assignment_id = a.assignment_id
+            FROM code_submission cs
+            JOIN code_evaluation ce ON cs.submission_id = ce.submission_id
+            JOIN assignment a ON cs.assignment_id = a.assignment_id
             WHERE a.instructor_id = %s
             GROUP BY DATE(cs.submitted_on)
             ORDER BY DATE(cs.submitted_on)
@@ -939,11 +937,11 @@ ORDER BY a.assignment_id DESC;
         rows = self.fetch_all(
             """
             SELECT spa.performance_band, COUNT(*) AS count
-            FROM Student_Performance_Analytics spa
+            FROM student_performance_analytics spa
             WHERE spa.user_id IN (
                 SELECT DISTINCT cs.user_id
-                FROM Code_Submission cs
-                JOIN Assignment a ON cs.assignment_id = a.assignment_id
+                FROM code_submission cs
+                JOIN assignment a ON cs.assignment_id = a.assignment_id
                 WHERE a.instructor_id = %s
             )
             GROUP BY spa.performance_band
@@ -963,10 +961,10 @@ ORDER BY a.assignment_id DESC;
         rows = self.fetch_all(
             """
             SELECT dl.difficulty_types, AVG(ce.score) AS avg_score
-            FROM Assignment a
-            JOIN Difficulty_Level dl ON a.difficulty_level = dl.level_id
-            LEFT JOIN Code_Submission cs ON a.assignment_id = cs.assignment_id
-            LEFT JOIN Code_Evaluation ce ON cs.submission_id = ce.submission_id
+            FROM assignment a
+            JOIN difficulty_level dl ON a.difficulty_level = dl.level_id
+            LEFT JOIN code_submission cs ON a.assignment_id = cs.assignment_id
+            LEFT JOIN code_evaluation ce ON cs.submission_id = ce.submission_id
             WHERE a.instructor_id = %s
             GROUP BY dl.difficulty_types
             """,
@@ -984,8 +982,8 @@ ORDER BY a.assignment_id DESC;
         rows = self.fetch_all(
             """
             SELECT a.title, COUNT(cs.submission_id) AS submissions
-            FROM Assignment a
-            LEFT JOIN Code_Submission cs ON a.assignment_id = cs.assignment_id
+            FROM assignment a
+            LEFT JOIN code_submission cs ON a.assignment_id = cs.assignment_id
             WHERE a.instructor_id = %s
             GROUP BY a.assignment_id
             """,
@@ -1004,9 +1002,9 @@ ORDER BY a.assignment_id DESC;
             """
             SELECT DATE(cs.submitted_on) AS date,
                    SUM(CASE WHEN ce.plagiarism_score > 50 THEN 1 ELSE 0 END) AS cases
-            FROM Code_Submission cs
-            JOIN Code_Evaluation ce ON cs.submission_id = ce.submission_id
-            JOIN Assignment a ON cs.assignment_id = a.assignment_id
+            FROM code_submission cs
+            JOIN code_evaluation ce ON cs.submission_id = ce.submission_id
+            JOIN assignment a ON cs.assignment_id = a.assignment_id
             WHERE a.instructor_id = %s
             GROUP BY DATE(cs.submitted_on)
             ORDER BY DATE(cs.submitted_on)
@@ -1025,9 +1023,9 @@ ORDER BY a.assignment_id DESC;
         rows = self.fetch_all(
             """
             SELECT DATE(cs.submitted_on) AS date, AVG(fs.feedback_score) AS avg_feedback
-            FROM Feedback_Score fs
-            JOIN Code_Submission cs ON fs.submission_id = cs.submission_id
-            JOIN Assignment a ON cs.assignment_id = a.assignment_id
+            FROM feedback_score fs
+            JOIN code_submission cs ON fs.submission_id = cs.submission_id
+            JOIN assignment a ON cs.assignment_id = a.assignment_id
             WHERE a.instructor_id = %s
             GROUP BY DATE(cs.submitted_on)
             ORDER BY DATE(cs.submitted_on)
@@ -1053,8 +1051,8 @@ ORDER BY a.assignment_id DESC;
             SELECT a.title,
                    DATE_FORMAT(cs.submitted_on, %s) AS period,
                    COUNT(*) AS submissions
-            FROM Assignment a
-            LEFT JOIN Code_Submission cs ON a.assignment_id = cs.assignment_id
+            FROM assignment a
+            LEFT JOIN code_submission cs ON a.assignment_id = cs.assignment_id
             WHERE a.instructor_id = %s
             GROUP BY a.assignment_id, period
             ORDER BY period
@@ -1074,7 +1072,7 @@ class SubmissionAnalytics:
             sql = """
                 SELECT cs.submission_id, cs.user_id, cs.assignment_id,
                        cs.language, cs.submitted_on, cs.version, cs.code_path
-                FROM Code_Submission cs
+                FROM code_submission cs
             """
             params = []
             filters = []
@@ -1120,7 +1118,7 @@ class AssignmentAnalytics:
                        COALESCE(sa.pass_percentage, 0) AS pass_percentage,
                        COALESCE(sa.average_time, '-') AS average_time,
                        COALESCE(sa.most_common_error, '-') AS most_common_error
-                FROM Assignment a
+                FROM assignment a
                 JOIN assignment_repository r 
                      ON a.repository_id = r.repository_id
                 LEFT JOIN (
@@ -1131,7 +1129,7 @@ class AssignmentAnalytics:
                            AVG(pass_percentage)      AS pass_percentage,
                            MAX(average_time)         AS average_time,
                            MAX(most_common_error)    AS most_common_error
-                    FROM Assignment_Analytics
+                    FROM assignment_analytics
                     GROUP BY assignment_id
                 ) sa ON a.assignment_id = sa.assignment_id
                 WHERE 1=1
@@ -1179,10 +1177,10 @@ class UserAnalytics:
         with conn.cursor(dictionary=True) as cur:
             # Role-specific join
             if role == "instructor":
-                join_sql = "LEFT JOIN Instructor_Performance_Analytics pa ON u.user_id = pa.user_id"
+                join_sql = "LEFT JOIN instructor_performance_analytics pa ON u.user_id = pa.user_id"
                 feedback_field = "pa.feedback_score_avg"
             elif role == "student":
-                join_sql = "LEFT JOIN Student_Performance_Analytics pa ON u.user_id = pa.user_id"
+                join_sql = "LEFT JOIN student_performance_analytics pa ON u.user_id = pa.user_id"
                 # Student table has performance_band not numeric score
                 feedback_field = "pa.performance_band"
             else:
@@ -1194,7 +1192,7 @@ class UserAnalytics:
                        CONCAT(u.first_name,' ',u.last_name) AS name,
                        u.email,
                        {feedback_field} AS feedback_score
-                FROM User_Profile u
+                FROM user_profile u
                 {join_sql}
                 WHERE u.role=%s
             """

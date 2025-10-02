@@ -80,26 +80,26 @@ class UserRepository:
     @staticmethod
     def get_user_ids_by_role(role: str) -> List[int]:
         rows = UserRepository._fetch_single_col(
-            "SELECT user_id FROM User_Profile WHERE role = %s", (role,)
+            "SELECT user_id FROM user_profile WHERE role = %s", (role,)
         )
         return [r["user_id"] for r in rows] if rows else []
 
     @staticmethod
     def get_all_students_and_instructors_ids() -> List[int]:
         rows = UserRepository._fetch_single_col(
-            "SELECT user_id FROM User_Profile WHERE role IN ('student','instructor')"
+            "SELECT user_id FROM user_profile WHERE role IN ('student','instructor')"
         )
         return [r["user_id"] for r in rows] if rows else []
 
     @staticmethod
     def get_all_user_ids() -> List[int]:
-        rows = UserRepository._fetch_single_col("SELECT user_id FROM User_Profile")
+        rows = UserRepository._fetch_single_col("SELECT user_id FROM user_profile")
         return [r["user_id"] for r in rows] if rows else []
 
     @staticmethod
     def get_user_email(user_id: int) -> Optional[str]:
         rows = UserRepository._fetch_single_col(
-            "SELECT email FROM User_Profile WHERE user_id=%s", (user_id,)
+            "SELECT email FROM user_profile WHERE user_id=%s", (user_id,)
         )
         if rows and rows[0].get("email"):
             return rows[0]["email"]
@@ -108,7 +108,7 @@ class UserRepository:
     @staticmethod
     def get_user_mobile_number(user_id: int) -> Optional[str]:
         rows = UserRepository._fetch_single_col(
-            "SELECT mobile_number FROM User_Profile WHERE user_id=%s", (user_id,)
+            "SELECT mobile_number FROM user_profile WHERE user_id=%s", (user_id,)
         )
         if rows and rows[0].get("mobile_number"):
             return rows[0]["mobile_number"]
@@ -134,7 +134,7 @@ class NotificationRepository:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                INSERT INTO Notification (user_id, message, notification_mode, type, subject, status, created_at)
+                INSERT INTO notification (user_id, message, notification_mode, type, subject, status, created_at)
                 VALUES (%s, %s, %s, %s, %s, 'unread', NOW())
                 """,
                 (user_id, message, mode, notif_type, subject),
@@ -162,7 +162,7 @@ class NotificationRepository:
                 cursor.execute(
                     """
                     SELECT notification_id, message, type, status, notification_mode, created_at, subject 
-                    FROM Notification
+                    FROM notification
                     WHERE user_id=%s AND notification_mode IS NOT NULL AND status=%s
                     ORDER BY created_at DESC 
                     LIMIT %s OFFSET %s
@@ -173,7 +173,7 @@ class NotificationRepository:
                 cursor.execute(
                     """
                     SELECT notification_id, message, type, status, notification_mode, created_at, subject 
-                    FROM Notification
+                    FROM notification
                     WHERE user_id=%s AND notification_mode IS NOT NULL
                     ORDER BY created_at DESC 
                     LIMIT %s OFFSET %s
@@ -192,7 +192,7 @@ class NotificationRepository:
         try:
             cursor = conn.cursor()
             cursor.execute(
-                "UPDATE Notification SET status='read' WHERE notification_id=%s",
+                "UPDATE notification SET status='read' WHERE notification_id=%s",
                 (notification_id,),
             )
             conn.commit()
@@ -218,7 +218,7 @@ class NotificationRepository:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                INSERT INTO BroadCast_Notification (broadcast_type, broadcast_mode, message, created_at)
+                INSERT INTO broadcast_notification (broadcast_type, broadcast_mode, message, created_at)
                 VALUES (%s, %s, %s, NOW())
                 """,
                 (btype, mode, message),
@@ -246,7 +246,7 @@ class NotificationRepository:
             placeholders = ",".join(["%s"] * len(types_list))
             sql = f"""
                 SELECT broadcast_id, broadcast_type, broadcast_mode, message, created_at
-                FROM BroadCast_Notification
+                FROM broadcast_notification
                 WHERE broadcast_type IN ({placeholders})
                 ORDER BY created_at DESC
                 LIMIT %s OFFSET %s

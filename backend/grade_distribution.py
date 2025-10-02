@@ -147,11 +147,13 @@ class GradeDistributionManager:
 
         rows = self._fetchall(
             f"""
-            SELECT DATE_FORMAT(cs.created_at, %s) as period,
-                cs.grade
-            FROM code_submission cs
-            WHERE cs.grade IS NOT NULL
-            ORDER BY cs.created_at
+            SELECT DATE_FORMAT(cs.submitted_on, %s) AS period,
+       ce.grade
+FROM code_submission cs
+JOIN code_evaluation ce ON cs.submission_id = ce.submission_id
+WHERE ce.grade IS NOT NULL
+ORDER BY cs.submitted_on
+
         """,
             (date_format,),
         )
@@ -185,8 +187,8 @@ class GradeDistributionManager:
             f"""
             SELECT DATE_FORMAT(cs.submitted_on, %s) as period,
                 ce.grade, COUNT(*) as count
-            FROM Code_Evaluation ce
-            JOIN Code_Submission cs ON ce.submission_id = cs.submission_id
+            FROM code_evaluation ce
+            JOIN code_submission cs ON ce.submission_id = cs.submission_id
             WHERE ce.grade IS NOT NULL
             GROUP BY period, ce.grade
             ORDER BY period
@@ -222,7 +224,7 @@ class GradeDistributionManager:
             SELECT gd.related_id,
                 gd.grade_a, gd.grade_b, gd.grade_c, gd.grade_d, gd.grade_e, gd.grade_f
             FROM grade_distribution gd
-            JOIN User_Profile u ON gd.related_id = u.user_id
+            JOIN user_profile u ON gd.related_id = u.user_id
             WHERE u.role = %s
             """,
             (role,),
@@ -253,9 +255,9 @@ class GradeDistributionManager:
             cur.execute(
                 """
                 SELECT u.user_id AS user_id, ce.score
-                FROM Code_Submission cs
-                JOIN Code_Evaluation ce ON cs.submission_id = ce.submission_id
-                JOIN User_Profile u ON cs.user_id = u.user_id
+                FROM code_submission cs
+                JOIN code_evaluation ce ON cs.submission_id = ce.submission_id
+                JOIN user_profile u ON cs.user_id = u.user_id
                 """
             )
             rows = cur.fetchall()
@@ -322,7 +324,7 @@ class GradeDistributionManager:
         query = (
             "SELECT gd.grade_a, gd.grade_b, gd.grade_c, gd.grade_d, gd.grade_e, gd.grade_f "
             "FROM grade_distribution gd "
-            "JOIN User_Profile u ON gd.related_id = u.user_id "
+            "JOIN user_profile u ON gd.related_id = u.user_id "
             "WHERE u.role = %s AND (u.user_id = %s OR u.email = %s)"
         )
         row = self._fetchone(query, (role, identifier, identifier))
@@ -357,7 +359,7 @@ class GradeDistributionManager:
                 COALESCE(SUM(grade_e),0),
                 COALESCE(SUM(grade_f),0)
             FROM grade_distribution gd
-            JOIN User_Profile u ON gd.related_id = u.user_id
+            JOIN user_profile u ON gd.related_id = u.user_id
             WHERE u.role = %s
             """,
             (role,),
@@ -382,9 +384,9 @@ class GradeDistributionManager:
         rows = self._fetchall(
             """
             SELECT u.user_id, MAX(ce.score) as best_score
-            FROM Code_Submission cs
-            JOIN Code_Evaluation ce ON cs.submission_id = ce.submission_id
-            JOIN User_Profile u ON cs.user_id = u.user_id
+            FROM code_submission cs
+            JOIN code_evaluation ce ON cs.submission_id = ce.submission_id
+            JOIN user_profile u ON cs.user_id = u.user_id
             WHERE cs.assignment_id = %s
             GROUP BY u.user_id
             """,

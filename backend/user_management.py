@@ -558,7 +558,7 @@ class StudentProfileData:
         }
 
     def get_user_info(self) -> Optional[Dict[str, Any]]:
-        query = "SELECT * FROM User_Profile WHERE user_id = %s"
+        query = "SELECT * FROM user_profile WHERE user_id = %s"
         with self.conn.cursor(dictionary=True, buffered=True) as cur:
             cur.execute(query, (self.user_id,))
             return normalize_row(cur.fetchone())
@@ -567,8 +567,8 @@ class StudentProfileData:
         query = """
             SELECT a.address_id, a.country_name, a.state_name, a.district_name,
                    a.local_address, a.pincode
-            FROM User_Profile u
-            LEFT JOIN Address a ON u.address_id = a.address_id
+            FROM user_profile u
+            LEFT JOIN address a ON u.address_id = a.address_id
             WHERE u.user_id = %s
         """
         with self.conn.cursor(dictionary=True, buffered=True) as cur:
@@ -579,13 +579,13 @@ class StudentProfileData:
         perf_query = """
             SELECT average_score, completion_rate, pass_rate,
                    plagiarism_incidents, performance_band, total_assignments
-            FROM Student_Performance_Analytics
+            FROM student_ferformance_analytics
             WHERE user_id = %s
         """
         stats_query = """
             SELECT d.difficulty_types, s.assignment_count, s.average_score, s.average_pass_rate
-            FROM Student_Difficulty_Stats s
-            JOIN Difficulty_Level d ON s.difficulty_level = d.level_id
+            FROM student_difficulty_stats s
+            JOIN difficulty_level d ON s.difficulty_level = d.level_id
             WHERE s.user_id = %s
         """
 
@@ -606,9 +606,9 @@ class StudentProfileData:
     def get_completed_assignments(self) -> Dict[str, list]:
         query = """
             SELECT DISTINCT a.assignment_id, a.title, d.difficulty_types
-            FROM Code_Submission c
-            JOIN Assignment a ON c.assignment_id = a.assignment_id
-            JOIN Difficulty_Level d ON a.difficulty_level = d.level_id
+            FROM code_submission c
+            JOIN assignment a ON c.assignment_id = a.assignment_id
+            JOIN difficulty_level d ON a.difficulty_level = d.level_id
             WHERE c.user_id = %s
         """
         with self.conn.cursor(dictionary=True, buffered=True) as cur:
@@ -646,7 +646,7 @@ class InstructorProfileData:
         }
 
     def get_user_info(self) -> Optional[dict[str, Any]]:
-        query = "SELECT * FROM User_Profile WHERE user_id = %s"
+        query = "SELECT * FROM user_profile WHERE user_id = %s"
         with DBConnection() as cursor:
             cursor.execute(query, (self.user_id,))
             row = cursor.fetchone()
@@ -656,8 +656,8 @@ class InstructorProfileData:
         query = """
             SELECT a.address_id, a.country_name, a.state_name, a.district_name,
                    a.local_address, a.pincode
-            FROM User_Profile u
-            LEFT JOIN Address a ON u.address_id = a.address_id
+            FROM user_profile u
+            LEFT JOIN address a ON u.address_id = a.address_id
             WHERE u.user_id = %s
         """
         with DBConnection() as cursor:
@@ -671,14 +671,14 @@ class InstructorProfileData:
                 overall_avg_score, avg_pass_rate,
                 plagiarism_rate, feedback_score_avg,
                 responsiveness_score, consistency_score
-            FROM Instructor_Performance_Analytics
+            FROM instructor_performance_analytics
             WHERE user_id = %s
         """
         stats_query = """
             SELECT d.difficulty_types, s.assignment_count, s.average_score,
                 s.average_pass_rate, s.average_feedback_score
-            FROM Instructor_Difficulty_Stats s
-            JOIN Difficulty_Level d ON s.difficulty_level = d.level_id
+            FROM instructor_difficulty_stats s
+            JOIN difficulty_level d ON s.difficulty_level = d.level_id
             WHERE s.user_id = %s
         """
 
@@ -707,8 +707,8 @@ class InstructorProfileData:
             SELECT a.assignment_id, a.title, d.difficulty_types,
                    COUNT(DISTINCT c.user_id) AS distinct_students
             FROM Assignment a
-            LEFT JOIN Code_Submission c ON a.assignment_id = c.assignment_id
-            JOIN Difficulty_Level d ON a.difficulty_level = d.level_id
+            LEFT JOIN code_submission c ON a.assignment_id = c.assignment_id
+            JOIN difficulty_level d ON a.difficulty_level = d.level_id
             WHERE a.instructor_id = %s
             GROUP BY a.assignment_id, d.difficulty_types
         """
@@ -741,7 +741,7 @@ class AdminProfileData:
         }
 
     def get_user_info(self) -> Optional[Dict[str, Any]]:
-        query = "SELECT * FROM User_Profile WHERE user_id = %s"
+        query = "SELECT * FROM user_profile WHERE user_id = %s"
         with self.conn.cursor(dictionary=True, buffered=True) as cur:
             cur.execute(query, (self.user_id,))
             return normalize_row(cur.fetchone())
@@ -750,8 +750,8 @@ class AdminProfileData:
         query = """
             SELECT a.address_id, a.country_name, a.state_name, a.district_name,
                    a.local_address, a.pincode
-            FROM User_Profile u
-            LEFT JOIN Address a ON u.address_id = a.address_id
+            FROM user_profile u
+            LEFT JOIN address a ON u.address_id = a.address_id
             WHERE u.user_id = %s
         """
         with self.conn.cursor(dictionary=True, buffered=True) as cur:
@@ -928,7 +928,7 @@ class UpdateProfileData(AdminProfileData):
             # -----------------------
             # Persist to DB
             # -----------------------
-            query = "UPDATE User_Profile SET profile_picture_path=%s WHERE user_id=%s"
+            query = "UPDATE user_profile SET profile_picture_path=%s WHERE user_id=%s"
             with self.conn.cursor() as cursor:
                 cursor.execute(query, (new_pic_path, self.user_id))
             self.conn.commit()
@@ -986,7 +986,7 @@ class UpdateProfileData(AdminProfileData):
             with self.conn.cursor() as cursor:
                 cursor.execute(
                     """
-                    UPDATE User_Profile
+                    UPDATE user_profile
                     SET first_name=%s, middle_name=%s, last_name=%s,
                         email=%s, mobile_number=%s
                     WHERE user_id=%s
@@ -1004,12 +1004,12 @@ class UpdateProfileData(AdminProfileData):
                 address_id = current_user.get("address_id")
                 if not address_id:
                     cursor.execute(
-                        "INSERT INTO Address (country_name, state_name, district_name, local_address, pincode) VALUES (NULL,NULL,NULL,NULL,NULL)"
+                        "INSERT INTO address (country_name, state_name, district_name, local_address, pincode) VALUES (NULL,NULL,NULL,NULL,NULL)"
                     )
                     self.conn.commit()
                     address_id = cursor.lastrowid
                     cursor.execute(
-                        "UPDATE User_Profile SET address_id=%s WHERE user_id=%s",
+                        "UPDATE user_profile SET address_id=%s WHERE user_id=%s",
                         (address_id, self.user_id),
                     )
                     self.conn.commit()
@@ -1033,7 +1033,7 @@ class UpdateProfileData(AdminProfileData):
 
                 cursor.execute(
                     """
-                    UPDATE Address
+                    UPDATE address
                     SET country_name=%s, state_name=%s, district_name=%s,
                         local_address=%s, pincode=%s
                     WHERE address_id=%s
@@ -1079,7 +1079,7 @@ class UpdateProfileData(AdminProfileData):
                 }
 
             password_hash = generate_password_hash(new_password)
-            query = "UPDATE User_Profile SET password=%s WHERE user_id=%s"
+            query = "UPDATE user_profile SET password=%s WHERE user_id=%s"
             with self.conn.cursor() as cursor:
                 cursor.execute(query, (password_hash, self.user_id))
             self.conn.commit()
