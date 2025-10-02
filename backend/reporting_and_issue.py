@@ -3,7 +3,10 @@ import uuid
 from typing import Dict, Any, List, cast
 from werkzeug.utils import secure_filename
 from backend.db import get_connection
-from backend.storage import upload_fileobj, make_key_for_file
+import cloudinary
+import cloudinary.uploader
+from config import Config
+
 
 # ----------------------------
 # Config
@@ -41,18 +44,52 @@ def submit_issue(
         if screenshot_files:
             for screenshot_file in screenshot_files:
                 if screenshot_file and screenshot_file.filename.strip() != "":
-                    if allowed_file(screenshot_file.filename):
-                        key = make_key_for_file(screenshot_file)
-                        url = upload_fileobj(screenshot_file.stream, key)
-                        cursor.execute(
-                            """INSERT INTO screenshots (issue_id, screenshot_path) VALUES (%s, %s)""",
-                            (issue_id, url),
-                        )
-                    else:
+                    if not allowed_file(screenshot_file.filename):
                         return {
                             "success": False,
                             "message": f"Invalid file type: {screenshot_file.filename}",
                         }
+
+                    url = None
+                    filename = secure_filename(screenshot_file.filename)
+
+                    # 1️⃣ Try Cloudinary first
+                    if Config.CLOUDINARY_ENABLED:
+                        try:
+                            upload_result = cloudinary.uploader.upload(
+                                screenshot_file,
+                                folder="auto-eval/screenshots",
+                                use_filename=True,
+                                unique_filename=True,
+                                overwrite=False,
+                            )
+                            url = upload_result.get("secure_url")
+                        except Exception as e:
+                            print(f"[WARN] Cloudinary upload failed: {e}")
+
+                    # 2️⃣ Fallback to local
+                    if not url:
+                        try:
+                            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+                            unique_name = f"{uuid.uuid4().hex}_{filename}"
+                            save_path = os.path.join(UPLOAD_FOLDER, unique_name)
+                            screenshot_file.save(save_path)
+                            # convert to web path (so Flask can serve)
+                            url = f"/uploads/screenshots/{unique_name}".replace(
+                                "\\", "/"
+                            )
+                        except Exception as e:
+                            print(f"[ERROR] Local screenshot save failed: {e}")
+                            return {
+                                "success": False,
+                                "message": f"Failed to save {filename}",
+                            }
+
+                    # 3️⃣ Save URL to DB
+                    cursor.execute(
+                        """INSERT INTO screenshots (issue_id, screenshot_path) VALUES (%s, %s)""",
+                        (issue_id, url),
+                    )
 
         conn.commit()
         return {"success": True, "issue_id": issue_id}

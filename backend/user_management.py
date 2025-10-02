@@ -17,15 +17,9 @@ from typing import Any, Dict, Optional, TypedDict, Optional
 from decimal import Decimal
 from datetime import date, datetime, time, timedelta
 from analytics import DBConnection, normalize_row
+import cloudinary
+import cloudinary.uploader
 
-
-# NEW: S3 helper + typing
-try:
-    from storage import upload_fileobj, make_key_for_file  # if storage.py exists
-
-    S3_ENABLED = True
-except Exception:
-    S3_ENABLED = False
 
 # Keep upload folder constant
 UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "uploads")
@@ -90,9 +84,10 @@ def is_email_registered(email):
 def save_profile_picture(file) -> str | None:
     """
     Saves uploaded profile picture.
-    - If S3 configured (storage.upload_fileobj), upload to S3 and return the S3 URL.
-    - Else save locally under UPLOAD_FOLDER and return local path.
-    Returns the stored path/URL or None.
+    Priority:
+     1) Cloudinary (if configured)
+     2) Local uploads folder (fallback)
+    Returns stored URL/path or None on failure.
     """
     if not file or not getattr(file, "filename", ""):
         return None
@@ -101,7 +96,7 @@ def save_profile_picture(file) -> str | None:
     if not allowed_file(filename):
         return None
 
-    # Check size safely
+    # Check file size
     try:
         file.stream.seek(0, os.SEEK_END)
         size = file.stream.tell()
@@ -110,32 +105,35 @@ def save_profile_picture(file) -> str | None:
         size = None
 
     if size is not None and size > MAX_PIC_BYTES:
-        # File too large
+        current_app.logger.warning("Profile picture too large (>2MB)")
         return None
 
-    # Try S3 first (if available)
-    if S3_ENABLED:
+    # 1️⃣ Try Cloudinary first
+    if Config.CLOUDINARY_ENABLED:
         try:
-            key = make_key_for_file(file)  # e.g. uploads/<uuid>_name.png
-            # upload_fileobj expects file.stream or file (file-like)
-            url = upload_fileobj(file.stream, key)
-            return url
-        except Exception as e:
-            # fallback to local save on failure (and log)
-            current_app.logger.warning(
-                "S3 upload failed, falling back to local save: %s", e
+            upload_result = cloudinary.uploader.upload(
+                file,
+                folder="auto-eval/profile_pictures",
+                use_filename=True,
+                unique_filename=True,
+                overwrite=False,
             )
+            url = upload_result.get("secure_url")
+            if url:
+                return url  # ✅ return CDN URL
+        except Exception as e:
+            current_app.logger.warning(f"Cloudinary upload failed: {e}")
 
-    # Local fallback (ensure directory exists)
+    # 2️⃣ Fallback to Local Uploads
     try:
         os.makedirs(UPLOAD_FOLDER, exist_ok=True)
         unique_name = f"{uuid.uuid4().hex}_{filename}"
         dest_path = os.path.join(UPLOAD_FOLDER, unique_name)
         file.save(dest_path)
-        # store the filesystem path (convert to web-safe backslashes)
-        return dest_path.replace("\\", "/")
+        web_path = f"/uploads/{unique_name}".replace("\\", "/")
+        return web_path
     except Exception as e:
-        current_app.logger.error("Failed to save profile picture locally: %s", e)
+        current_app.logger.error(f"Local save failed: {e}")
         return None
 
 
@@ -535,11 +533,6 @@ def change_password():
 
 
 # --------------------
-# Read-only: ProfileData
-# --------------------
-
-
-# --------------------
 # Read-only: StudentProfileData
 # --------------------
 class StudentProfileData:
@@ -783,7 +776,6 @@ class UpdateProfileData(AdminProfileData):
     # Profile Picture
     # ----------------------------
     def update_picture(self, file=None, delete_picture: bool = False) -> Dict[str, Any]:
-
         try:
             current_user = self.get_user_info() or {}
             if not current_user:
@@ -791,15 +783,6 @@ class UpdateProfileData(AdminProfileData):
 
             old_pic_path = current_user.get("profile_picture_path")
             new_pic_path = None
-
-            # Helper: detect S3 URL for bucket-based urls (simple heuristic)
-            def is_s3_url(url: str) -> bool:
-                if not url:
-                    return False
-                # common S3 URL patterns: https://bucket.s3.amazonaws.com/key or https://s3.amazonaws.com/bucket/key
-                return url.startswith("https://") and (
-                    ".s3." in url or "s3.amazonaws.com" in url
-                )
 
             # Helper: delete old local file
             def delete_local(path: str):
@@ -811,75 +794,17 @@ class UpdateProfileData(AdminProfileData):
                         f"Failed to delete local file {path}: {e}"
                     )
 
-            # Helper: delete old S3 object (if boto3 available)
-            def delete_s3_object(url: str):
-                try:
-                    # Try to use storage.delete_s3_key if provided
-                    try:
-                        from storage import delete_s3_key  # optional helper you may add
-
-                        # user-provided helper expects the S3 key or full URL; adjust as needed
-                        delete_s3_key(url)
-                        return
-                    except Exception:
-                        pass
-
-                    # Fallback: parse bucket/key from URL and delete via boto3
-                    from urllib.parse import urlparse
-
-                    parsed = urlparse(url)
-                    host = parsed.netloc  # e.g. bucket.s3.amazonaws.com
-                    path = parsed.path.lstrip("/")  # either key or 'bucket/key'
-                    # Two cases: bucket.s3.amazonaws.com/key  OR s3.amazonaws.com/bucket/key
-                    if "s3.amazonaws.com" in host and host.split(".")[0] != "s3":
-                        # bucket.s3.amazonaws.com/key
-                        bucket = host.split(".")[0]
-                        key = path
-                    elif host.startswith("s3.") or host == "s3.amazonaws.com":
-                        # s3.amazonaws.com/bucket/key
-                        parts = path.split("/", 1)
-                        if len(parts) == 2:
-                            bucket, key = parts[0], parts[1]
-                        else:
-                            return
-                    else:
-                        # Last-resort: if URL contains bucket name in host: try to infer
-                        # Not guaranteed; skip deletion
-                        return
-
-                    # perform delete
-                    import boto3
-
-                    s3 = boto3.client(
-                        "s3",
-                        aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-                        aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
-                        region_name=os.getenv("AWS_REGION", None),
-                    )
-                    s3.delete_object(Bucket=bucket, Key=key)
-                except Exception as e:
-                    current_app.logger.warning(f"Failed to delete S3 object {url}: {e}")
-
-            # -----------------------
-            # Delete only (no upload)
-            # -----------------------
+            # Delete existing picture
             if delete_picture:
                 if old_pic_path:
-                    if is_s3_url(old_pic_path):
-                        delete_s3_object(old_pic_path)
-                    else:
-                        # old_pic_path may be a filesystem path (absolute or relative)
-                        delete_local(old_pic_path)
+                    delete_local(old_pic_path)
                 new_pic_path = None
 
-            # -----------------------
             # Upload new picture flow
-            # -----------------------
             elif file and hasattr(file, "filename") and file.filename:
                 if not allowed_file(file.filename):
                     return {"status": "error", "message": "File extension not allowed."}
 
-                # size check (safe)
                 try:
                     file.stream.seek(0, os.SEEK_END)
                     size = file.stream.tell()
@@ -897,9 +822,7 @@ class UpdateProfileData(AdminProfileData):
                         "message": "Uploaded file is not an image.",
                     }
 
-                # Use centralized helper which will upload to S3 if configured (or fallback to local)
                 try:
-                    # save_profile_picture must be defined elsewhere in the module
                     new_pic_path = save_profile_picture(file)
                     if not new_pic_path:
                         return {
@@ -913,21 +836,16 @@ class UpdateProfileData(AdminProfileData):
                         "message": "Failed to save profile picture.",
                     }
 
-                # After successful upload, delete old picture (local or S3) to avoid orphaned files
+                # Delete old local picture after successful upload
                 if old_pic_path:
                     try:
-                        if is_s3_url(old_pic_path):
-                            delete_s3_object(old_pic_path)
-                        else:
-                            delete_local(old_pic_path)
+                        delete_local(old_pic_path)
                     except Exception as e:
                         current_app.logger.warning(
                             f"Failed to delete old picture after upload: {e}"
                         )
 
-            # -----------------------
             # Persist to DB
-            # -----------------------
             query = "UPDATE user_profile SET profile_picture_path=%s WHERE user_id=%s"
             with self.conn.cursor() as cursor:
                 cursor.execute(query, (new_pic_path, self.user_id))
