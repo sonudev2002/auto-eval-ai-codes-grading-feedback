@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>About — Sonu Singh Dev | AutoEval</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    .blob { filter: blur(40px); opacity: 0.9; transform: translateZ(0); }
+    .card-glow { box-shadow: 0 6px 30px rgba(53, 211, 178, 0.08), inset 0 -2px 12px rgba(0,0,0,0.03); }
+    .reveal { opacity: 0; transform: translateY(18px) scale(0.99); transition: all 700ms cubic-bezier(.2,.9,.2,1); }
+    .reveal.show { opacity: 1; transform: none; }
+    .modal-backdrop { background: rgba(4,6,15,0.6); backdrop-filter: blur(4px); }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased">
+
+
+  <header class="w-full bg-gradient-to-r from-indigo-600 via-teal-400 to-cyan-500 text-white">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="logo" class="h-12 w-12 rounded-full object-cover border-2 border-white/30">
+        <div>
+          <div class="font-semibold text-lg">AutoEval</div>
+          <div class="text-xs opacity-90">AI Code Grading • Sonu Singh Dev</div>
+        </div>
+      </div>
+
+      <nav class="hidden md:flex gap-6 items-center">
+        <a href="/" class="hover:underline">Home</a>
+        
+        <a href="/contact" class="hover:underline">Contact</a>
+        <a href="/privacy" class="hover:underline">Privacy</a>
+        <a href="https://github.com/sonudev2002" target="_blank"
+           class="ml-3 px-3 py-2 bg-white/10 rounded-md hover:bg-white/20">GitHub</a>
+      </nav>
+
+      <div class="md:hidden">
+        <button onclick="alert('Use desktop for full layout')" class="px-3 py-2 rounded bg-white/10">Menu</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== HERO ===== -->
+  <section class="relative overflow-hidden">
+    <div class="max-w-6xl mx-auto px-6 py-16 flex flex-col lg:flex-row items-center gap-10">
+      <div class="w-full lg:w-1/2 reveal" data-reveal>
+        <div class="relative">
+          <h1 class="text-4xl md:text-5xl font-extrabold leading-tight">
+            I build AI-powered developer tools.<br>
+            <span class="text-teal-500">AutoEval — Intelligent Code Evaluation</span>
+          </h1>
+          <p class="mt-4 text-slate-700">
+            I'm <strong>Sonu Singh Dev</strong>, an MCA student who loves algorithms (C++), scalable backend systems,
+            and applying ML to practical problems. This project is my final-year submission and my recruiter-facing portfolio.
+          </p>
+
+          <div class="mt-6 flex gap-3">
+            <a href="mailto:sonusingh@example.com" class="px-5 py-3 bg-teal-500 text-white rounded-lg shadow hover:scale-105 transition">📧 Hire / Contact</a>
+            <a href="https://github.com/sonudev2002" target="_blank" class="px-5 py-3 border border-slate-200 rounded-lg hover:bg-slate-100 transition">GitHub</a>
+            <!-- Resume placeholder: update to actual file when ready -->
+            <a href="/static/sonu_resume.pdf" class="px-5 py-3 bg-white text-slate-800 rounded-lg shadow-sm hover:scale-105 transition">Resume ↓</a>
+          </div>
+
+          <!-- stats -->
+          <div class="mt-8 grid grid-cols-3 gap-4 text-center">
+            <div class="rounded-lg bg-white p-4 card-glow">
+              <div class="text-2xl font-bold" data-counter="128">0</div>
+              <div class="text-xs text-slate-500">Submissions</div>
+            </div>
+            <div class="rounded-lg bg-white p-4 card-glow">
+              <div class="text-2xl font-bold" data-counter="92">0</div>
+              <div class="text-xs text-slate-500">Auto Tests</div>
+            </div>
+            <div class="rounded-lg bg-white p-4 card-glow">
+              <div class="text-2xl font-bold" data-counter="6">0</div>
+              <div class="text-xs text-slate-500">Projects</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- right -->
+      <div class="w-full lg:w-1/2 reveal" data-reveal>
+        <div class="relative p-6 rounded-2xl bg-gradient-to-br from-white/80 to-slate-50 card-glow">
+          <svg class="absolute -right-12 -top-12 w-72 h-72 blob" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+            <defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#7c3aed"/><stop offset="1" stop-color="#14b8a6"/></linearGradient></defs>
+            <path fill="url(#g)" d="M44.3,-57.1C58.4,-51.6,72.7,-41.5,78.9,-27.9C85,-14.4,82.8,2.6,74.7,19.1C66.6,35.6,52.8,51.6,36.4,60.9C20,70.2,1.1,72.9,-16.6,75.1C-34.4,77.3,-51.7,79.1,-62.6,68.6C-73.6,58.1,-78.2,35.4,-78.3,13.1C-78.4,-9.2,-74.1,-30.9,-63,-42.7C-51.9,-54.4,-33.9,-56.3,-17.2,-61.2C-0.5,-66,15.6,-73.2,44.3,-57.1Z" transform="translate(100 100)" />
+          </svg>
+
+          <div class="relative z-10">
+            <h3 class="text-lg font-semibold">Project Snapshot</h3>
+            <p class="text-sm text-slate-600 mt-2">
+              Intelligent Code Evaluation & Analytics — Docker sandboxed executions, GPT feedback, CodeBERT plagiarism, and grade analytics.
+            </p>
+
+            <div class="mt-4 grid grid-cols-2 gap-3">
+              <div class="p-3 bg-white rounded-lg shadow-sm">
+                <div class="text-xs text-slate-500">Backend</div>
+                <div class="font-semibold">Flask (Python)</div>
+              </div>
+              <div class="p-3 bg-white rounded-lg shadow-sm">
+                <div class="text-xs text-slate-500">DB</div>
+                <div class="font-semibold">MySQL (Railway)</div>
+              </div>
+              <div class="p-3 bg-white rounded-lg shadow-sm">
+                <div class="text-xs text-slate-500">Execution</div>
+                <div class="font-semibold">Docker sandboxes</div>
+              </div>
+              <div class="p-3 bg-white rounded-lg shadow-sm">
+                <div class="text-xs text-slate-500">AI</div>
+                <div class="font-semibold">CodeBERT / GPT</div>
+              </div>
+            </div>
+
+            <div class="mt-5">
+              <canvas id="skillsChart" height="260"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== PROJECTS ===== -->
+  <section class="max-w-6xl mx-auto px-6 py-12">
+    <h2 class="text-2xl font-bold mb-6">Selected Projects</h2>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <article class="bg-white rounded-xl p-5 card-glow reveal" data-reveal>
+        <div class="flex items-start gap-3">
+          <div class="flex-shrink-0 h-14 w-14 rounded-md bg-gradient-to-br from-indigo-500 to-teal-400 flex items-center justify-center text-white font-bold">AE</div>
+          <div>
+            <h3 class="font-semibold">AutoEval — Code Judging</h3>
+            <p class="text-sm text-slate-500 mt-1">Docker-based runner, testcase orchestration, result analytics.</p>
+            <div class="mt-3 flex gap-2">
+              <button class="px-3 py-1 bg-teal-500 text-white rounded text-sm" onclick="openProjectModal(1)">View</button>
+              <a href="https://github.com/sonudev2002/auto-eval-ai-codes-grading-feedback" class="px-3 py-1 border rounded text-sm" target="_blank">Code</a>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="bg-white rounded-xl p-5 card-glow reveal" data-reveal>
+        <div class="flex items-start gap-3">
+          <div class="flex-shrink-0 h-14 w-14 rounded-md bg-gradient-to-br from-purple-500 to-pink-400 flex items-center justify-center text-white font-bold">PL</div>
+          <div>
+            <h3 class="font-semibold">Plagiarism Detector</h3>
+            <p class="text-sm text-slate-500 mt-1">CodeBERT embeddings + siamese architecture for similarity detection.</p>
+            <div class="mt-3 flex gap-2">
+              <button class="px-3 py-1 bg-teal-500 text-white rounded text-sm" onclick="openProjectModal(2)">View</button>
+              <a href="https://github.com/sonudev2002/auto-eval-ai-codes-grading-feedback/tree/main/plagiarism-detector" class="px-3 py-1 border rounded text-sm" target="_blank">Code</a>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="bg-white rounded-xl p-5 card-glow reveal" data-reveal>
+        <div class="flex items-start gap-3">
+          <div class="flex-shrink-0 h-14 w-14 rounded-md bg-gradient-to-br from-rose-500 to-orange-400 flex items-center justify-center text-white font-bold">FB</div>
+          <div>
+            <h3 class="font-semibold">Feedback Generator</h3>
+            <p class="text-sm text-slate-500 mt-1">OpenAI-powered code feedback tailored for learning.</p>
+            <div class="mt-3 flex gap-2">
+              <button class="px-3 py-1 bg-teal-500 text-white rounded text-sm" onclick="openProjectModal(3)">View</button>
+              <a href="https://github.com/sonudev2002/auto-eval-ai-codes-grading-feedback/tree/main/feedback" class="px-3 py-1 border rounded text-sm" target="_blank">Code</a>
+            </div>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ===== TIMELINE ===== -->
+  <section class="max-w-6xl mx-auto px-6 py-12">
+    <h2 class="text-2xl font-bold mb-6 reveal" data-reveal>Journey & Timeline</h2>
+
+    <ol class="relative border-l border-slate-200 ml-3">
+      <li class="mb-10 ml-6 reveal" data-reveal>
+        <span class="absolute -left-4 flex items-center justify-center w-8 h-8 bg-teal-500 rounded-full text-white">🎓</span>
+        <h3 class="font-semibold">MCA — Applied Learning (2024)</h3>
+        <time class="text-xs text-slate-500">Started thesis & project</time>
+        <p class="mt-2 text-slate-600">Designed the architecture for AutoEval, researched CodeBERT & scoring strategies.</p>
+      </li>
+
+      <li class="mb-10 ml-6 reveal" data-reveal>
+        <span class="absolute -left-4 flex items-center justify-center w-8 h-8 bg-indigo-500 rounded-full text-white">🛠</span>
+        <h3 class="font-semibold">PoC & Dockerization</h3>
+        <time class="text-xs text-slate-500">Built runner & sandbox</time>
+        <p class="mt-2 text-slate-600">Implemented language runners, test harness and CI-friendly dev flow.</p>
+      </li>
+
+      <li class="mb-10 ml-6 reveal" data-reveal>
+        <span class="absolute -left-4 flex items-center justify-center w-8 h-8 bg-pink-500 rounded-full text-white">🚀</span>
+        <h3 class="font-semibold">Deploy & Portfolio</h3>
+        <time class="text-xs text-slate-500">Deployed to Render with Railway MySQL</time>
+        <p class="mt-2 text-slate-600">Full stack deployment and production environment tuning.</p>
+      </li>
+    </ol>
+  </section>
+
+
+    <footer>   {% include 'partials/footer.html' %}</footer>
+ 
+
+
+  <!-- ===== PROJECT MODAL ===== -->
+  <div id="projectModal" class="fixed inset-0 hidden items-center justify-center z-50">
+    <div class="absolute inset-0 modal-backdrop" onclick="closeProjectModal()"></div>
+    <div class="relative max-w-3xl w-[94%] bg-white rounded-xl p-6 shadow-2xl z-10">
+      <button class="absolute right-4 top-4 text-slate-500 hover:text-slate-800" onclick="closeProjectModal()">✕</button>
+      <div id="projectModalContent"></div>
+    </div>
+  </div>
+
+  <!-- ===== SCRIPTS ===== -->
+  <script>
+    // reveal on scroll
+    const revealEls = document.querySelectorAll('[data-reveal]');
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('show'); io.unobserve(e.target); }});
+    }, { threshold: 0.12 });
+    revealEls.forEach(el => io.observe(el));
+
+    // counters
+    function animateCounter(el, to) {
+      let start = 0, dur = 1200, startTime = null;
+      function step(ts) { if(!startTime) startTime = ts; const progress = Math.min((ts - startTime)/dur,1); el.textContent = Math.round(progress*to); if(progress<1) requestAnimationFrame(step); }
+      requestAnimationFrame(step);
+    }
+    document.querySelectorAll('[data-counter]').forEach(el => {
+      const val = parseInt(el.getAttribute('data-counter'), 10) || 0;
+      const obs = new IntersectionObserver((entries) => { if(entries[0].isIntersecting) { animateCounter(el, val); obs.disconnect(); } }, { threshold: 0.6 });
+      obs.observe(el);
+    });
+
+    // Chart.js radar
+    const ctx = document.getElementById('skillsChart').getContext('2d');
+    const skillsChart = new Chart(ctx, {
+      type: 'radar',
+      data: {
+        labels: ['C++ (DSA)', 'Backend', 'Docker', 'ML/AI', 'SQL', 'System Design'],
+        datasets: [{ label: 'Skill Level', data: [95,80,78,70,85,65], backgroundColor: 'rgba(20,184,166,0.12)', borderColor: 'rgb(20,184,166)', pointBackgroundColor: 'rgb(6,95,70)' }]
+      },
+      options: { elements: { line: { borderWidth: 2 } }, scales: { r: { beginAtZero: true, min: 0, max: 100, ticks: { stepSize: 20 } } }, plugins: { legend: { display: false } } }
+    });
+
+    // project modal content
+    const PROJECTS = {
+      1: { title: 'AutoEval — Code Judging', body: `<p class="text-slate-700">Dockerized multi-language sandbox, evaluation pipeline, and analytics. Includes secure filesystem handling, live testcases and result storage.</p><ul class="list-disc ml-5 mt-3 text-slate-600"><li>Languages: C++, C, Python, Java</li><li>Features: Plagiarism, AI feedback, Grade analytics</li><li>Deployment: Render + Railway MySQL</li></ul><a class="inline-block mt-4 px-4 py-2 bg-teal-500 text-white rounded" href="https://github.com/sonudev2002/auto-eval-ai-codes-grading-feedback" target="_blank">View repo</a>` },
+      2: { title: 'Plagiarism Detector', body: '<p class="text-slate-700">CodeBERT embeddings + siamese network to detect code similarity with thresholding and DB-backed matches.</p>' },
+      3: { title: 'Feedback Generator', body: '<p class="text-slate-700">OpenAI GPT based feedback tailored for students — combined with rule-based fallback.</p>' }
+    };
+    function openProjectModal(id) { const modal = document.getElementById('projectModal'); const content = document.getElementById('projectModalContent'); const p = PROJECTS[id]; content.innerHTML = `<h3 class="text-xl font-bold mb-3">${p.title}</h3>${p.body}`; modal.classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
+    function closeProjectModal() { const modal = document.getElementById('projectModal'); modal.classList.add('hidden'); document.body.style.overflow = ''; }
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeProjectModal(); });
+  </script>
+
+</body>
+</html>

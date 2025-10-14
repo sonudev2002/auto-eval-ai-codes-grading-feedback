@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Submission Report — {{ result.submission.submission_id if result.submission else "Submission" }}</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg-1: #0b1220;
+    --card: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    --muted: #9aa7bf;
+    --accent: #06b6d4;
+    --accent-2: #7c3aed;
+    --ok: #10b981;
+    --bad: #ef4444;
+    --radius: 12px;
+    --card-border: rgba(255,255,255,0.04);
+    color-scheme: dark;
+  }
+
+  /* ✅ Balanced Layout: wider sides, narrower middle */
+  .grid {
+    display: grid;
+    grid-template-columns: 340px 0.9fr 380px; /* left ↑, right ↑, middle ↓ */
+    gap: 18px;
+    margin-top: 18px;
+  }
+
+  @media (max-width: 1600px) {
+    .grid {
+      grid-template-columns: 1fr;
+    }
+    .right-col { order: 3; }
+    .left-col { order: 1; }
+    .middle-col { order: 2; }
+  }
+
+  * {
+    box-sizing: border-box;
+    font-family: Inter, system-ui, Segoe UI, Roboto, Arial;
+  }
+
+  body {
+    margin: 0;
+    background: linear-gradient(180deg, #071127 0%, #081225 100%);
+    color: #e8f0ff;
+  }
+
+  a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  .container {
+    max-width: 1600px;
+    margin: 15px auto;
+    padding: 15px;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 14px;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+  }
+
+  .title {
+    font-weight: 1400;
+    font-size: 24px;
+  }
+
+  .sub {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .actions {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.06);
+    color: var(--muted);
+    padding: 8px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+
+  .btn:hover,
+  .btn:focus {
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .btn.primary {
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    border: none;
+    color: #001418;
+  }
+
+  .card {
+    background: var(--card);
+    padding: 14px;
+    border-radius: var(--radius);
+    border: 1px solid var(--card-border);
+  }
+
+  .metric {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.02);
+  }
+
+  .metric .icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .value {
+    font-weight: 800;
+    font-size: 18px;
+  }
+
+  .muted {
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .score-ring {
+    width: 94px;
+    height: 94px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: linear-gradient(180deg, #042026, #032735);
+  }
+
+  .grade-badge {
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 13px;
+  }
+
+  table {
+    width: 90%;
+    border-collapse: collapse;
+  }
+
+  th, td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    font-size: 13px;
+  }
+
+  th {
+    color: var(--muted);
+    font-weight: 700;
+  }
+
+  .status-pass {
+    color: var(--ok);
+    font-weight: 700;
+  }
+
+  .status-fail {
+    color: var(--bad);
+    font-weight: 700;
+  }
+
+  .chip {
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.02);
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid rgba(255,255,255,0.02);
+  }
+
+  .chip.active {
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    color: #001418;
+    border: none;
+  }
+
+  pre.code {
+    margin: 0;
+    background: rgba(0,0,0,0.25);
+    padding: 8px;
+    border-radius: 8px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: #e6eef6;
+    font-size: 13px;
+    max-height: 6rem;
+    overflow: hidden;
+  }
+
+  /* ✅ Make right column text slightly smaller */
+  .right-col {
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+</style>
+
+</head>
+<body>
+  <div class="container">
+    <div class="topbar">
+      <div>
+        <div class="sub">Assignment: <strong>{{ result.submission.assignment_id if result.submission else "N/A" }}</strong>
+          — Submission: <strong>#{{ result.submission.submission_id if result.submission else "N/A" }}</strong></div>
+      </div>
+      <div class="title">Submission Report</div>
+
+      <div class="actions">
+        <button class="btn" onclick="history.back()">← Back</button>
+        <button class= "btn" onclick="performance_history()">📈 performance_history</button>
+        <button class="btn" onclick="goHome()">🏠 Home</button>
+        <button class="btn primary" onclick="window.print()">Print</button>
+      </div>
+    </div>
+
+    {% if result.status == "error" %}
+      <div class="card" style="margin-top:16px;color:var(--bad)">{{ result.message }}</div>
+    {% else %}
+    <div class="grid">
+      <!-- LEFT -->
+      <div class="left-col">
+        <div class="card" style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;gap:16px">
+            <div>
+              <div class="muted">Submitted By</div>
+              <div style="font-weight:800">{{ result.submission.user_id }}</div>
+              <div class="muted" style="font-size:12px">{{ result.submission.submitted_on }}</div>
+            </div>
+            <div class="score-ring">
+              {% set score = result.analysis.score if result.analysis else 0 %}
+              <svg viewBox="0 0 36 36" width="72" height="72">
+                <defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#06b6d4"/><stop offset="100%" stop-color="#7c3aed"/></linearGradient></defs>
+                <path d="M18 2.0845a15.9155 15.9155 0 0 1 0 31.831a15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none" stroke="#0d2630" stroke-width="3"/>
+                <path fill="none" stroke="url(#g1)" stroke-width="3" stroke-dasharray="{{ score }},100"
+                      stroke-linecap="round" transform="rotate(-90 18 18)"/>
+                <text x="18" y="20.5" font-size="7" fill="#e6eef6" text-anchor="middle" font-weight="700">{{ score }}%</text>
+              </svg>
+            </div>
+          </div>
+          <div style="margin-top:6px">
+            {% set grade = result.analysis.grade if result.analysis else 'F' %}
+            <span class="grade-badge"
+              style="background:{% if grade in ['A','A+'] %}linear-gradient(90deg,#10b981,#06b6d4){% elif grade in ['B','B+'] %}linear-gradient(90deg,#7dd3fc,#60a5fa){% else %}linear-gradient(90deg,#ef4444,#fb7185){% endif %};color:#001418">
+              {{ grade }}
+            </span>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:12px">
+          <h4 style="margin:0 0 8px 0">Quick Metrics</h4>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="metric"><div class="icon" style="background:rgba(6,182,212,0.12)">🕒</div>
+              <div><div class="muted">Avg Exec</div><div class="value">{{ result.analysis.average_execution_time }} ms</div></div></div>
+            <div class="metric"><div class="icon" style="background:rgba(16,185,129,0.12)">✅</div>
+              <div><div class="muted">Passed</div><div class="value">{{ result.analysis.passed_testcases }}</div></div></div>
+            <div class="metric"><div class="icon" style="background:rgba(252,211,77,0.12)">⚖️</div>
+              <div><div class="muted">Quality</div><div class="value">{{ result.analysis.code_quality_score }}</div></div></div>
+            <div class="metric"><div class="icon" style="background:rgba(239,68,68,0.08)">🔍</div>
+              <div><div class="muted">Plagiarism</div><div class="value">{{ result.analysis.plagiarism_score }}%</div></div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h4 style="margin:0 0 8px 0">Submission Details</h4>
+          <table>
+            <tr><th>Assignment</th><td>{{ result.submission.assignment_id }}</td></tr>
+            <tr><th>Student</th><td>{{ result.submission.user_id }}</td></tr>
+            <tr><th>Language</th><td>{{ result.submission.language }}</td></tr>
+            <tr><th>Submitted</th><td>{{ result.submission.submitted_on }}</td></tr>
+            <tr><th>Code Length</th><td>{{ result.analysis.code_length }} lines</td></tr>
+            <tr><th>Cyclomatic</th><td>{{ result.analysis.cyclomatic_complexity }}</td></tr>
+          </table>
+        </div>
+        <div class="card">
+          <h4 style="margin:0 0 8px 0">Plagiarism Report</h4>
+          {% if result.plagiarism %}
+            <table>
+              <thead><tr><th>Matched Submission</th><th>Similarity</th></tr></thead>
+              <tbody>
+                {% for m in result.plagiarism %}
+                  <tr>
+                    <td><a href="/view/submission/{{ m.matched_submission_id }}">#{{ m.matched_submission_id }}</a></td>
+                    <td style="font-weight:800;color:{% if m.plagiarism_score>=70 %}var(--bad){% elif m.plagiarism_score>=40 %}#f59e0b{% else %}var(--ok){% endif %}">
+                      {{ m.plagiarism_score }}%</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}<div class="muted">No matches found.</div>{% endif %}
+        </div>
+      </div>
+
+      <!-- MIDDLE -->
+      <div class="middle-col">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div><h3 style="margin:0">Testcase Results</h3>
+              <div class="muted" style="font-size:13px">Inspect inputs, outputs and timings</div></div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div class="chip active" onclick="filterTestcases('all',this)">All</div>
+              <div class="chip" onclick="filterTestcases('passed',this)">Passed</div>
+              <div class="chip" onclick="filterTestcases('failed',this)">Failed</div>
+              <div class="muted" style="font-size:12px">Total: {{ result.analysis.total_testcases }}</div>
+            </div>
+          </div>
+
+          <div style="margin-top:12px;overflow:auto">
+            {% if result.testcases %}
+            <table id="tcTable">
+              <thead><tr><th>#</th><th>Input</th><th>Expected</th><th>Output</th><th>Status</th><th>Time</th></tr></thead>
+              <tbody id="tcBody">
+              {% for tc in result.testcases %}
+                <tr data-status="{{ 'passed' if tc.passed else 'failed' }}">
+                  <td>{{ tc.testcase_id }}</td>
+                  <td><pre class="code" id="in_{{tc.testcase_id}}">{{ tc.input_data }}</pre></td>
+                  <td><pre class="code" id="exp_{{tc.testcase_id}}">{{ tc.expected_data }}</pre></td>
+                  <td><pre class="code" id="out_{{tc.testcase_id}}">{{ tc.output }}</pre></td>
+                  <td class="{{ 'status-pass' if tc.passed else 'status-fail' }}">{{ 'Passed' if tc.passed else 'Failed' }}</td>
+                  <td>{{ tc.execution_time }}</td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+            {% else %}<div class="muted">No testcase results.</div>{% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="right-col">
+        <div class="card" style="margin-bottom:10px">
+          <h4 style="margin:0 0 8px 0">Feedback & Suggestions</h4>
+          <div style="white-space:pre-wrap">{{ result.feedback_html | safe if result.feedback_html else "No feedback." }}</div>
+        </div>
+
+        
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <script>
+  function goHome(){
+    const role="{{ session['user']['role']|lower }}";
+    if(role==="student")location='/student_dashboard';
+    else if(role==="instructor")location='/instructor_dashboard';
+    else if(role==="admin")location='/admin_dashboard';
+    else location='/';
+  }
+
+ 
+function performance_history(targetUserId = null, targetRole = null) {
+  // Get the current user's session role and id from Flask
+  const role = "{{ session['user']['role']|lower }}";
+  const currentUserId = {{ session['user']['user_id'] }};
+  
+  let url = "";
+
+  // 🧑‍💼 Admin: can view everyone
+  if (role === "admin") {
+    if (targetUserId && targetRole) {
+      url = `/performance_history/${targetUserId}?role=${targetRole}`;
+    } else {
+      // default to admin viewing own dashboard, no restriction
+      url = `/performance_history/${currentUserId}?role=admin`;
+    }
+  }
+  // 👨‍🏫 Instructor: can view self or students
+  else if (role === "instructor") {
+    if (!targetUserId || parseInt(targetUserId) === currentUserId) {
+      // own performance
+      url = `/performance_history/${currentUserId}?role=instructor`;
+    } else {
+      // viewing student
+      url = `/performance_history/${targetUserId}?role=student`;
+    }
+  }
+  // 👨‍🎓 Student: can view only self
+  else if (role === "student") {
+    url = `/performance_history/${currentUserId}?role=student`;
+  } 
+  else {
+    alert("Access denied or invalid role");
+    return;
+  }
+
+  // 🔗 Navigate safely
+  window.location.href = url;
+}
+
+
+  function copyText(id,btn){
+    const el=document.getElementById(id);if(!el)return;
+    navigator.clipboard.writeText(el.innerText).then(()=>{
+      const old=btn.innerText;btn.innerText="Copied!";setTimeout(()=>btn.innerText=old,1000);
+    });
+  }
+
+  function filterTestcases(mode,chip){
+    document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    document.querySelectorAll('#tcBody tr').forEach(r=>{
+      const s=r.getAttribute('data-status');
+      r.style.display = (mode==='all'||s===mode)?'':'none';
+    });
+  }
+
+  // robust download (no blank page)
+  const btn=document.getElementById('downloadBtn');
+  if(btn){
+    btn.addEventListener('click',async()=>{
+      const id={{ result.submission.submission_id if result.submission else 'null' }};
+      if(!id){alert('No submission id');return;}
+      try{
+        const res=await fetch(`/download/submission/${id}`);
+        if(!res.ok){const t=await res.text();alert(`Download failed (${res.status})\\n${t||''}`);return;}
+        const disp=res.headers.get('content-disposition')||'';let fn='submission_'+id;
+        const m=disp.match(/filename\\*?=.*(?:'')?([^;]+)/);if(m)fn=decodeURIComponent(m[1].replace(/["']/g,''));
+        const blob=await res.blob();const url=URL.createObjectURL(blob);
+        const a=document.createElement('a');a.href=url;a.download=fn;document.body.appendChild(a);a.click();
+        a.remove();URL.revokeObjectURL(url);
+      }catch(e){console.error(e);alert('Download failed: '+e.message);}
+    });
+  }
+  </script>
+</body>
+</html>

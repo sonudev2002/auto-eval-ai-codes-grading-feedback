@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Student Dashboard</title>
+
+  <!-- Bootstrap & Fonts -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary: #4B0082;
+      --secondary: #00BFA6;
+      --accent: #f97316;
+      --bg: #f9fafb;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --card: #fff;
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      --radius: 10px;
+    }
+
+    body {
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      width: 100%;
+      background: var(--bg);
+      font-family: 'Inter', sans-serif;
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      width: 100%;
+      padding: 120px 0 100px 0;
+    }
+
+    .dashboard-container {
+      width: 95%;
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 20px 40px;
+      background: var(--bg);
+    }
+
+    footer {
+      margin-top: auto;
+      width: 100%;
+      text-align: center;
+    }
+
+    h2 {
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: var(--primary);
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      border: none;
+      background: #eef2ff;
+      color: var(--primary);
+      padding: 10px 16px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-weight: 500;
+      transition: 0.2s;
+      box-shadow: var(--shadow);
+    }
+
+    .tab-btn.active {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .tab-content {
+      display: none;
+      margin-top: 20px;
+      animation: fadeIn 0.3s ease-in-out;
+    }
+
+    .tab-content.active { display: block; }
+
+    @keyframes fadeIn {
+      from {opacity: 0; transform: translateY(10px);}
+      to {opacity: 1; transform: translateY(0);}
+    }
+
+    /* Cards */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      text-align: left;
+      transition: 0.2s;
+    }
+
+    .card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 10px;
+    }
+
+    /* Tables */
+    .table-container {
+      overflow-x: auto;
+      background: #fff;
+      padding: 16px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #eef2ff; color: var(--primary); font-weight: 600; text-align: center; }
+    td, th { padding: 10px 12px; text-align: center; }
+
+    tr:nth-child(even){ background:#fafafa; }
+    tr:hover{ background:#f5f7ff; }
+
+    .repo-assignments-card {
+      display: none;
+      margin-top: 20px;
+      background: #fff;
+      padding: 20px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    /* Notifications Area */
+    #notificationArea {
+      background: #fff;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px 20px;
+      margin-bottom: 25px;
+    }
+    #notificationArea ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    #notificationArea li {
+      border-bottom: 1px solid #eee;
+      padding: 8px 6px;
+      font-size: 14px;
+      color: var(--text);
+      cursor: pointer;
+    }
+    #notificationArea li.unread {
+      background: #eef2ff;
+      font-weight: 600;
+    }
+    #notificationArea li:last-child { border-bottom: none; }
+  </style>
+</head>
+
+<body>
+
+  {% include 'partials/header.html' %}
+
+  <main>
+    <div class="dashboard-container">
+      <h2 class="mb-4">Welcome, to Auto Eval !</h2>
+
+      <!-- 📢 Notifications -->
+      <div class="card" id="notificationArea">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h5 class="mb-0">📢 Recent Notifications</h5>
+          <button class="btn btn-sm btn-outline-primary" id="showAllBtn" onclick="showAllNotifications()">View All</button>
+        </div>
+        <ul id="notifFeed"></ul>
+        <p id="noNotifMsg" class="text-muted small m-0" style="display:none;">No notifications yet.</p>
+      </div>
+
+      <!-- 🧩 Full Notifications Modal -->
+      <div class="modal fade" id="allNotifModal" tabindex="-1" aria-labelledby="allNotifModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-scrollable modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="allNotifModalLabel">📬 All Notifications</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <ul id="allNotifList" class="list-unstyled mb-0"></ul>
+            </div>
+            <div class="modal-footer d-flex justify-content-between">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              <button type="button" class="btn btn-success" onclick="markAllAsRead()">Mark All as Read</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs mb-3">
+        <button class="tab-btn active" onclick="openTab('repositories',this)">📂 Repositories</button>
+        <button class="tab-btn" onclick="openTab('assignments',this)">📘 All Assignments</button>
+      </div>
+
+      <!-- Repositories -->
+      <div id="repositories" class="tab-content active">
+        {% if repo_detail %}
+        <div id="repoGrid" class="card-grid">
+          {% for repo in repo_detail %}
+          <div class="card">
+            <div class="card-title">{{ repo.title }}</div>
+            <p><strong>Repo ID:</strong> {{ repo.repository_id }}</p>
+            <p><strong>Created By:</strong> {{ repo.created_by_name }}</p>
+            <p><strong>Questions:</strong> {{ repo.question_count }}</p>
+            <button class="btn btn-primary w-100" onclick="loadRepoAssignments({{ repo.repository_id }},'{{ repo.title|e }}')">View Assignments</button>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+          <p class="text-muted">No repositories available.</p>
+        {% endif %}
+
+        <div id="repoAssignmentsCard" class="repo-assignments-card">
+          <button class="btn btn-secondary mb-3" onclick="backToRepos()">← Back</button>
+          <h5 id="repoAssignmentsTitle"></h5>
+          <div id="repoAssignmentsTable" class="table-container"></div>
+        </div>
+      </div>
+
+     <!-- Assignments -->
+<div id="assignments" class="tab-content">
+  {% if assignments %}
+  <div class="table-container">
+    <table class="table table-hover table-bordered align-middle">
+      <thead class="table-primary">
+        <tr>
+          <th>Repo ID</th>
+          <th>Assignment ID</th>
+          <th>Title</th>
+          <th>Instructor</th>
+          <th>Difficulty</th>
+          <th>Due Date</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in assignments %}
+        {% set is_overdue = a.due_date < now %}
+        {# ✅ Always prefer backend-provided status #}
+        {% set status = a.status or ('Missed Deadline' if is_overdue else 'Pending Submission') %}
+
+        <tr>
+          <td>{{ a.repository_id }}</td>
+          <td>{{ a.assignment_id }}</td>
+          <td>{{ a.title }}</td>
+          <td>{{ a.instructor_name }}</td>
+          <td>{{ a.difficulty_level }}</td>
+          <td>
+            {% if is_overdue %}
+              <span class="text-danger fw-bold">{{ a.due_date.strftime('%d %b %Y') }}</span>
+            {% else %}
+              {{ a.due_date.strftime('%d %b %Y') }}
+            {% endif %}
+          </td>
+
+          <!-- 🎨 Color-coded Status -->
+          <td>
+            {% if status == 'Submitted On Time' %}
+              <span class="badge bg-success">{{ status }}</span>
+            {% elif status == 'Submitted Late' %}
+              <span class="badge bg-warning text-dark">{{ status }}</span>
+            {% elif status == 'Missed Deadline' %}
+              <span class="badge bg-danger">{{ status }}</span>
+            {% elif status == 'Pending Submission' %}
+              <span class="badge bg-secondary">{{ status }}</span>
+            {% else %}
+              <span class="badge bg-light text-muted">{{ status }}</span>
+            {% endif %}
+          </td>
+
+          <!-- 🧭 Dynamic Action -->
+          <td>
+            <a href="/code_editor/{{ a.assignment_id }}" 
+               class="btn {% if status.startswith('Submitted') %}btn-outline-primary{% else %}btn-success{% endif %} btn-sm w-100"
+               {% if status == 'Missed Deadline' %}disabled title="Deadline passed"{% endif %}>
+              {% if status.startswith('Submitted') %}
+                Resubmit
+              {% elif status == 'Missed Deadline' %}
+                Closed
+              {% else %}
+                Submit
+              {% endif %}
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <p class="text-muted">No assignments available.</p>
+  {% endif %}
+</div>
+
+
+    </div>
+  </main>
+
+  {% include 'partials/footer.html' %}
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    function openTab(id, btn) {
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      btn.classList.add('active');
+    }
+
+    function escapeHtml(s){
+      return typeof s!=='string'?s:s.replace(/&/g,'&amp;')
+                                .replace(/</g,'&lt;')
+                                .replace(/>/g,'&gt;')
+                                .replace(/"/g,'&quot;')
+                                .replace(/'/g,'&#039;');
+    }
+
+    function loadRepoAssignments(rid, title) {
+  const container = document.getElementById('repoAssignmentsTable');
+  container.innerHTML =
+    '<div class="text-center text-muted py-3">⏳ Loading assignments...</div>';
+
+  fetch(`/fetch_assignments_for_student?repo_id=${encodeURIComponent(rid)}`)
+    .then((r) => r.json())
+    .then((data) => {
+      if (!Array.isArray(data) || data.length === 0) {
+        container.innerHTML =
+          '<p class="text-muted text-center">No assignments found for this repository.</p>';
+        return;
+      }
+
+      // 🧩 Build table
+      let h = `
+        <table class="table table-hover table-bordered align-middle">
+          <thead class="table-secondary">
+            <tr>
+              <th>ID</th>
+              <th>Title</th>
+              <th>Instructor</th>
+              <th>Difficulty</th>
+              <th>Due Date</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      data.forEach((a) => {
+        const safeTitle = escapeHtml(a.title || 'Untitled');
+        const safeInstructor = escapeHtml(a.instructor_name || 'Unknown');
+        const safeDifficulty = escapeHtml(a.difficulty_level || 'N/A');
+        const safeDue = escapeHtml(a.due_date || '-');
+
+        // ✅ Always use backend status
+        const status = a.status || 'Pending Submission';
+
+        // 🎨 Consistent color badges
+        let badgeClass = 'bg-secondary';
+        if (status === 'Submitted On Time') badgeClass = 'bg-success';
+        else if (status === 'Submitted Late') badgeClass = 'bg-warning text-dark';
+        else if (status === 'Missed Deadline') badgeClass = 'bg-danger';
+        else if (status === 'Pending Submission') badgeClass = 'bg-secondary';
+        else badgeClass = 'bg-light text-muted';
+
+        // 🎯 Dynamic button
+        let buttonText = 'Submit';
+        let buttonClass = 'btn-success';
+        let buttonAttr = '';
+
+        if (status.startsWith('Submitted')) {
+          buttonText = 'Resubmit';
+          buttonClass = 'btn-outline-primary';
+        } else if (status === 'Missed Deadline') {
+          buttonText = 'Closed';
+          buttonClass = 'btn-secondary';
+          buttonAttr = 'disabled title="Deadline passed"';
+        }
+
+        h += `
+          <tr>
+            <td>${a.assignment_id}</td>
+            <td>${safeTitle}</td>
+            <td>${safeInstructor}</td>
+            <td>${safeDifficulty}</td>
+            <td>${safeDue}</td>
+            <td><span class="badge ${badgeClass}">${escapeHtml(status)}</span></td>
+            <td>
+              <a href="/code_editor/${encodeURIComponent(a.assignment_id)}"
+                 class="btn ${buttonClass} btn-sm w-100"
+                 ${buttonAttr}>
+                ${buttonText}
+              </a>
+            </td>
+          </tr>
+        `;
+      });
+
+      h += '</tbody></table>';
+      container.innerHTML = h;
+
+      // Update UI
+      document.getElementById('repoAssignmentsTitle').innerText =
+        `Assignments in Repository: ${title}`;
+      document.getElementById('repoAssignmentsCard').style.display = 'block';
+      document.getElementById('repoGrid').style.display = 'none';
+    })
+    .catch((e) => {
+      console.error('❌ Error fetching assignments:', e);
+      container.innerHTML =
+        '<p class="text-danger text-center">⚠️ Failed to load assignments. Please try again.</p>';
+    });
+}
+
+    function backToRepos(){
+      document.getElementById('repoAssignmentsCard').style.display='none';
+      document.getElementById('repoGrid').style.display='grid';
+    }
+
+    // Notifications
+    document.addEventListener("DOMContentLoaded", () => {
+      const userId = {{ session['user']['user_id'] }};
+      const userRole = "{{ session['user']['role']|lower }}";
+      loadNotifications(userId, userRole);
+      setInterval(() => loadNotifications(userId, userRole), 30000);
+    });
+
+    function loadNotifications(userId, userRole){
+      fetch(`/notifications/feed/${userId}?role=${userRole}&limit=100`)
+        .then(r => r.json())
+        .then(res => {
+          if (!res || res.status === "error") return;
+          const data = res.feed || [];
+          const notifFeed = document.getElementById("notifFeed");
+          const noNotifMsg = document.getElementById("noNotifMsg");
+          const allNotifList = document.getElementById("allNotifList");
+
+          notifFeed.innerHTML = "";
+          allNotifList.innerHTML = "";
+
+          if (data.length === 0) {
+            noNotifMsg.style.display = "block";
+            return;
+          } else {
+            noNotifMsg.style.display = "none";
+          }
+
+          // Show only latest 5 in dashboard
+          const recent = data.slice(0, 5);
+          recent.forEach(n => {
+            const li = document.createElement("li");
+            li.innerHTML = `${escapeHtml(n.message)} <small class="text-muted">(${n.source})</small>`;
+            li.classList.add("py-2", "border-bottom", n.status === "unread" ? "fw-semibold" : "text-muted");
+            if (n.source === "notification" && n.status === "unread")
+              li.onclick = () => markNotificationRead(n.notification_id, userId);
+            notifFeed.appendChild(li);
+          });
+
+          // Fill full list for modal
+          data.forEach(n => {
+            const li = document.createElement("li");
+            li.innerHTML = `${escapeHtml(n.message)} <small class="text-muted">(${n.source})</small>`;
+            li.classList.add("py-2", "border-bottom", n.status === "unread" ? "fw-semibold" : "text-muted");
+            if (n.source === "notification" && n.status === "unread")
+              li.onclick = () => markNotificationRead(n.notification_id, userId);
+            allNotifList.appendChild(li);
+          });
+        })
+        .catch(e => console.error("Error loading notifications:", e));
+    }
+
+    function showAllNotifications() {
+      const modal = new bootstrap.Modal(document.getElementById("allNotifModal"));
+      modal.show();
+    }
+
+    function markNotificationRead(notificationId, userId){
+      fetch(`/notifications/mark_read/${notificationId}`, {method:"PUT"})
+        .then(r=>r.json())
+        .then(res=>{
+          if(res.status==="success") loadNotifications(userId);
+          else console.error("Mark read failed:",res.error);
+        })
+        .catch(e=>console.error("Error marking notification read:",e));
+    }
+
+    // ✅ Mark all notifications as read
+    function markAllAsRead(){
+      const userId = {{ session['user']['user_id'] }};
+      fetch(`/notifications/mark_all_read/${userId}`, { method: "PUT" })
+        .then(r => r.json())
+        .then(res => {
+          if(res.status === "success") {
+            loadNotifications(userId, "{{ session['user']['role']|lower }}");
+          } else {
+            console.error("Failed to mark all as read:", res.message);
+          }
+        })
+        .catch(e => console.error("Error marking all as read:", e));
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,2 @@
+s = "akjlkajslkdjasljlaskjldkfasjlkasjlkds"
+print(s)

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy | AutoEval</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased">
+
+  <header class="w-full bg-gradient-to-r from-indigo-600 via-teal-400 to-cyan-500 text-white">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="logo" class="h-12 w-12 rounded-full object-cover border-2 border-white/30">
+        <div>
+          <div class="font-semibold text-lg">AutoEval</div>
+          <div class="text-xs opacity-90">AI Code Grading • Sonu Singh Dev</div>
+        </div>
+      </div>
+
+      <nav class="hidden md:flex gap-6 items-center">
+        <a href="/" class="hover:underline">Home</a>
+        
+        <a href="/contact" class="hover:underline">Contact</a>
+        <a href="/about" class="hover:underline">About</a>
+        <a href="https://github.com/sonudev2002" target="_blank"
+           class="ml-3 px-3 py-2 bg-white/10 rounded-md hover:bg-white/20">GitHub</a>
+      </nav>
+
+      <div class="md:hidden">
+        <button onclick="alert('Use desktop for full layout')" class="px-3 py-2 rounded bg-white/10">Menu</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-6 py-16 leading-relaxed">
+
+    <section class="mb-12 text-center">
+      <h1 class="text-4xl font-extrabold text-teal-600 mb-2">Privacy Policy</h1>
+      <p class="text-slate-600">Last updated: <strong>October 2025</strong></p>
+    </section>
+
+    <section class="space-y-10">
+      <article class="reveal">
+        <h2 class="text-2xl font-semibold mb-3">1. Introduction</h2>
+        <p>
+          Welcome to <strong>AutoEval</strong> — an AI-powered code evaluation platform built by <strong>Sonu Singh Dev</strong>.
+          This Privacy Policy explains how we collect, use, and protect your personal data when you visit our website or use our platform.
+          By using this site, you agree to the practices described here.
+        </p>
+      </article>
+
+      <article class="reveal">
+        <h2 class="text-2xl font-semibold mb-3">2. Information We Collect</h2>
+        <ul class="list-disc ml-6 space-y-2">
+          <li><strong>Account Information:</strong> Name, email, role (student/instructor/admin), and profile picture.</li>
+          <li><strong>Code Submissions:</strong> Your uploaded or written code for grading, feedback, and plagiarism checks.</li>
+          <li><strong>Usage Data:</strong> Browser type, device, pages visited, and time spent (for analytics & performance).</li>
+          <li><strong>Feedback Data:</strong> Comments or feedback you submit via the platform.</li>
+        </ul>
+      </article>
+
+      <article class="reveal">
+        <h2 class="text-2xl font-semibold mb-3">3. How We Use Your Information</h2>
+        <ul class="list-disc ml-6 space-y-2">
+          <li>🧠 To evaluate your code and generate personalized feedback using AI models (OpenAI GPT).</li>
+          <li>📊 To analyze student performance, grading accuracy, and plagiarism detection.</li>
+          <li>📢 To notify you via email or in-app alerts about evaluations, reports, or updates.</li>
+          <li>🔒 To ensure platform security and academic integrity.</li>
+        </ul>
+      </article>
+
+      <article class="reveal">
+        <h2 class="text-2xl font-semibold mb-3">4. AI & Automation Disclosure</h2>
+        <p>
+          AutoEval uses <strong>OpenAI GPT</strong> and <strong>CodeBERT</strong> models to generate feedback and detect code similarity.
+          All automated processes are designed to assist instructors, not replace human judgment.
+          Your code is processed temporarily and never sold or shared with third parties for advertising.
+        </p>
+      </article>
+
+      <article class="reveal">
+        <h2 class="text-2xl font-semibold mb-3">5. Cookies & Tracking</h2>
+        <p>
+          We use cookies to maintain sessions, store preferences, and improve user experience.
+          You can disable cookies in your browser, but some features (like login) may not work properly.
+        </p>
+      </article>
+
+      <article class="reveal">
+        <h2 class="text-2xl font-semibold mb-3">6. Third-Party Services</h2>
+        <ul class="list-disc ml-6 space-y-2">
+          <li><strong>Render:</strong> Hosts the AutoEval web application.</li>
+          <li><strong>Railway:</strong> Manages the cloud MySQL database securely.</li>
+          <li><strong>OpenAI:</strong> Provides GPT-based feedback generation (via API).</li>
+        </ul>
+        <p class="mt-3">
+          These third-party providers follow their own privacy policies. We ensure that only minimal necessary data is shared with them for functionality.
+        </p>
+      </article>
+
+      <article class="reveal">
+        <h2 class="text-2xl font-semibold mb-3">7. Data Security</h2>
+        <p>
+          We use encrypted connections (<strong>HTTPS</strong>) and cloud-level protections offered by Render and Railway.
+          Access to sensitive data is restricted and protected via environment variables.
+        </p>
+      </article>
+
+      <article class="reveal">
+        <h2 class="text-2xl font-semibold mb-3">8. Your Rights</h2>
+        <ul class="list-disc ml-6 space-y-2">
+          <li>Request a copy or deletion of your personal data.</li>
+          <li>Update your profile or correct inaccurate information.</li>
+          <li>Withdraw consent to data collection at any time (via contacting support).</li>
+        </ul>
+      </article>
+
+      <article class="reveal">
+        <h2 class="text-2xl font-semibold mb-3">9. Updates to This Policy</h2>
+        <p>
+          This Privacy Policy may be updated periodically. Updates will be reflected with a new “Last Updated” date above.
+        </p>
+      </article>
+
+      <article class="reveal">
+        <h2 class="text-2xl font-semibold mb-3">10. Contact Us</h2>
+        <p>
+          If you have any questions about this Privacy Policy, feel free to reach out:
+        </p>
+        <ul class="mt-2">
+          <li>📧 <strong>Email:</strong> <a href="mailto:sonusingh@example.com" class="text-teal-600 hover:underline">sonusingh@example.com</a></li>
+          <li>💻 <strong>GitHub:</strong> <a href="https://github.com/sonudev2002/auto-eval-ai-codes-grading-feedback" target="_blank" class="text-teal-600 hover:underline">sonudev2002/auto-eval-ai-codes-grading-feedback</a></li>
+        </ul>
+      </article>
+    </section>
+  </main>
+
+  {% include 'partials/footer.html' %}
+
+  <script>
+    // simple scroll reveal animation
+    const els = document.querySelectorAll('.reveal');
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) { e.target.classList.add('opacity-100','translate-y-0'); io.unobserve(e.target); }
+      });
+    }, { threshold: 0.15 });
+
+    els.forEach(el => {
+      el.classList.add('opacity-0','translate-y-4','transition-all','duration-700');
+      io.observe(el);
+    });
+  </script>
+</body>
+</html>
