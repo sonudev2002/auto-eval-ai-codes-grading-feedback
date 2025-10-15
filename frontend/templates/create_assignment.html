@@ -293,17 +293,17 @@
                         />
                       </div>
                       <div class="col-12">
-  <label>Examples (Input / Output / Explanation)</label>
-  <div id="createExampleContainer" class="mb-2"></div>
+                        <label>Examples (Input / Output / Explanation)</label>
+                        <div id="createExampleContainer" class="mb-2"></div>
 
-  <button
-    type="button"
-    class="btn btn-outline-primary btn-sm"
-    onclick="addCreateExample()"
-  >
-    Add Example
-  </button>
-</div>
+                        <button
+                          type="button"
+                          class="btn btn-outline-primary btn-sm"
+                          onclick="addCreateExample()"
+                        >
+                          Add Example
+                        </button>
+                      </div>
 
                       <div class="col-12">
                         <label>Test Cases</label>
@@ -583,9 +583,7 @@
         </div>
       </div>
     </main>
-    <footer>
-      {% include 'partials/footer.html' %}
-    </footer>
+    <footer>{% include 'partials/footer.html' %}</footer>
 
     <script>
       window.addEventListener("DOMContentLoaded", async () => {
@@ -655,33 +653,35 @@
 
         //────────────────────────────────────────────────────────────────────────────
         // 2. Create Assignment helpers (global for inline onclick)
-       // 🧠 Add full example fields (Input / Output / Explanation)
-window.addCreateExample = () => {
-  const container = document.getElementById("createExampleContainer");
-  const index = container.querySelectorAll(".example-block").length + 1;
+        // 🧠 Add full example fields (Input / Output / Explanation)
+        window.addCreateExample = () => {
+          const container = document.getElementById("createExampleContainer");
+          const index = container.querySelectorAll(".example-block").length + 1;
 
-  const block = document.createElement("div");
-  block.className = "example-block border rounded p-3 mb-2 bg-light";
+          const block = document.createElement("div");
+          block.className = "example-block border rounded p-3 mb-2 bg-light";
 
-  block.innerHTML = `
-    <div class="row g-2 align-items-center mb-2">
-      <div class="col-md-4">
-        <input type="text" name="example_input[]" class="form-control form-control-sm" placeholder="Example ${index} Input" required>
-      </div>
-      <div class="col-md-4">
-        <input type="text" name="example_output[]" class="form-control form-control-sm" placeholder="Example ${index} Expected Output" required>
-      </div>
-      <div class="col-md-4">
-        <input type="text" name="example_explanation[]" class="form-control form-control-sm" placeholder="Example ${index} Explanation (optional)">
-      </div>
+          block.innerHTML = `
+  <div class="row g-2 align-items-center mb-2">
+    <div class="col-md-3">
+      <input type="text" name="example_input[]" class="form-control form-control-sm" placeholder="Example ${index} Input" required>
     </div>
-    <div class="text-end">
-      <button type="button" class="btn btn-sm btn-danger" onclick="this.closest('.example-block').remove()">Remove</button>
+    <div class="col-md-3">
+      <input type="text" name="example_output[]" class="form-control form-control-sm" placeholder="Example ${index} Output" required>
     </div>
-  `;
-  container.appendChild(block);
-};
+    <div class="col-md-4">
+      <input type="text" name="example_explanation[]" class="form-control form-control-sm" placeholder="Example ${index} Explanation (optional)">
+    </div>
+    <div class="col-md-2 text-end">
+      <button type="button" class="btn btn-sm btn-danger w-100" onclick="this.closest('.example-block').remove()">
+        <i class="bi bi-x-circle"></i> Remove
+      </button>
+    </div>
+  </div>
+`;
 
+          container.appendChild(block);
+        };
 
         window.addCreateTestCase = () => {
           const c = document.getElementById("createTestCaseContainer");
@@ -802,30 +802,33 @@ window.addCreateExample = () => {
           selectedData.due_date || ""
         }">`;
           }
-if (chkEx.checked) {
-  // 🔹 Wrapper: Label + Button in one flex line
-  const headerRow = document.createElement("div");
-  headerRow.className = "d-flex justify-content-between align-items-center mb-2";
+          if (chkEx.checked) {
+            // 🔹 Wrapper: Label + Button in one flex line
+            const headerRow = document.createElement("div");
+            headerRow.className =
+              "d-flex justify-content-between align-items-center mb-2";
 
-  const exLabel = document.createElement("label");
-  exLabel.textContent = "Examples (Input / Output / Explanation)";
-  exLabel.className = "mb-0 fw-semibold";
+            const exLabel = document.createElement("label");
+            exLabel.textContent = "Examples (Input / Output / Explanation)";
+            exLabel.className = "mb-0 fw-semibold";
 
-  const addBtn = document.createElement("button");
-  addBtn.type = "button";
-  addBtn.className = "btn btn-outline-primary btn-sm";
-  addBtn.textContent = "+ Add Example";
+            const addBtn = document.createElement("button");
+            addBtn.type = "button";
+            addBtn.className = "btn btn-outline-primary btn-sm";
+            addBtn.textContent = "+ Add Example";
 
-  // ✅ Container where example blocks go
-  const examplesContainer = document.createElement("div");
-  examplesContainer.id = "updateExampleContainer";
+            // ✅ Container where example blocks go
+            const examplesContainer = document.createElement("div");
+            examplesContainer.id = "updateExampleContainer";
 
-  // 🔹 Add functionality for button
-  addBtn.addEventListener("click", () => {
-    const blockCount = examplesContainer.querySelectorAll(".example-block").length + 1;
-    const block = document.createElement("div");
-    block.className = "example-block border rounded p-3 mb-2 bg-light";
-    block.innerHTML = `
+            // 🔹 Add functionality for button
+            addBtn.addEventListener("click", () => {
+              const blockCount =
+                examplesContainer.querySelectorAll(".example-block").length + 1;
+              const block = document.createElement("div");
+              block.className =
+                "example-block border rounded p-3 mb-2 bg-light";
+              block.innerHTML = `
       <div class="row g-2 mb-2">
         <div class="col-md-4">
           <input type="text" name="example_input[]" class="form-control form-control-sm"
@@ -845,42 +848,49 @@ if (chkEx.checked) {
       </div>
       
     `;
-    examplesContainer.appendChild(block);
-  });
+              examplesContainer.appendChild(block);
+            });
 
-  // 🔹 Append both label + button to same line
-  headerRow.appendChild(exLabel);
-  headerRow.appendChild(addBtn);
-  cont.appendChild(headerRow);
+            // 🔹 Append both label + button to same line
+            headerRow.appendChild(exLabel);
+            headerRow.appendChild(addBtn);
+            cont.appendChild(headerRow);
 
-  // 🔹 Existing examples rendering
-  (selectedData.examples || []).forEach((ex, idx) => {
-    const block = document.createElement("div");
-    block.className = "example-block border rounded p-3 mb-2 bg-light";
-    block.innerHTML = `
+            // 🔹 Existing examples rendering
+            (selectedData.examples || []).forEach((ex, idx) => {
+              const block = document.createElement("div");
+              block.className =
+                "example-block border rounded p-3 mb-2 bg-light";
+              block.innerHTML = `
       <div class="row g-2 mb-2">
         <div class="col-md-4">
           <input type="text" name="example_input[]" class="form-control form-control-sm"
-                 placeholder="Example ${idx + 1} Input" value="${ex.input || ""}">
+                 placeholder="Example ${idx + 1} Input" value="${
+                ex.input || ""
+              }">
         </div>
         <div class="col-md-4">
           <input type="text" name="example_output[]" class="form-control form-control-sm"
-                 placeholder="Example ${idx + 1} Output" value="${ex.output || ""}">
+                 placeholder="Example ${idx + 1} Output" value="${
+                ex.output || ""
+              }">
         </div>
         <div class="col-md-4">
           <input type="text" name="example_explanation[]" class="form-control form-control-sm"
-                 placeholder="Example ${idx + 1} Explanation" value="${ex.explanation || ""}">
+                 placeholder="Example ${idx + 1} Explanation" value="${
+                ex.explanation || ""
+              }">
         </div>
       </div>
       <div class="text-end">
         <button type="button" class="btn btn-sm btn-danger" onclick="this.closest('.example-block').remove()">Remove</button>
       </div>
     `;
-    examplesContainer.appendChild(block);
-  });
+              examplesContainer.appendChild(block);
+            });
 
-  cont.appendChild(examplesContainer);
-}
+            cont.appendChild(examplesContainer);
+          }
 
           if (chkTC.checked) {
             const tcLabel = document.createElement("label");
@@ -931,17 +941,21 @@ if (chkEx.checked) {
               payload.hint = cont.querySelector("[name='hint']").value;
             if (editDue.checked)
               payload.due_date = cont.querySelector("[name='due_date']").value;
-          if (editExample.checked) {
-  const inputs = cont.querySelectorAll("[name='example_input[]']");
-  const outputs = cont.querySelectorAll("[name='example_output[]']");
-  const explanations = cont.querySelectorAll("[name='example_explanation[]']");
+            if (editExample.checked) {
+              const inputs = cont.querySelectorAll("[name='example_input[]']");
+              const outputs = cont.querySelectorAll(
+                "[name='example_output[]']"
+              );
+              const explanations = cont.querySelectorAll(
+                "[name='example_explanation[]']"
+              );
 
-  payload.examples = Array.from(inputs).map((_, idx) => ({
-    input: inputs[idx].value,
-    output: outputs[idx].value,
-    explanation: explanations[idx].value,
-  }));
-}
+              payload.examples = Array.from(inputs).map((_, idx) => ({
+                input: inputs[idx].value,
+                output: outputs[idx].value,
+                explanation: explanations[idx].value,
+              }));
+            }
 
             if (editTestCase.checked)
               payload.test_cases = Array.from(
@@ -1215,7 +1229,6 @@ if (chkEx.checked) {
         waveHeight: 20.0, // height of waves
         waveSpeed: 1.0, // speed of animation
         zoom: 1.0, // overall scale
-      
       });
     </script>
   </body>

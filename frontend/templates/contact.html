@@ -1,110 +1,170 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Contact | AutoEval by Sonu Singh Dev</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Contact — Sonu Singh Dev | AutoEval</title>
+
+  <!-- 🌐 SEO + Meta -->
+  <meta name="description" content="Get in touch with Sonu Singh Dev, creator of AutoEval — an AI-powered code evaluation and feedback platform." />
+  <meta property="og:title" content="Contact — AutoEval | Sonu Singh Dev" />
+  <meta property="og:description" content="Reach out to Sonu Singh Dev for collaborations, hiring, or project discussions." />
+  <meta property="og:image" content="{{ url_for('static', filename='images/logo.png') }}" />
+  <meta name="author" content="Sonu Singh Dev" />
+
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    .reveal { opacity: 0; transform: translateY(18px) scale(0.98); transition: all 700ms cubic-bezier(.2,.9,.2,1); }
+    .reveal.show { opacity: 1; transform: none; }
+    .card-glow { box-shadow: 0 6px 30px rgba(53, 211, 178, 0.08), inset 0 -2px 12px rgba(0,0,0,0.03); }
+  </style>
 </head>
+
 <body class="bg-slate-50 text-slate-800 antialiased">
 
- <header class="w-full bg-gradient-to-r from-indigo-600 via-teal-400 to-cyan-500 text-white">
+  <!-- ✅ HEADER -->
+  <header class="w-full bg-gradient-to-r from-indigo-600 via-teal-400 to-cyan-500 text-white shadow sticky top-0 z-50">
     <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="logo" class="h-12 w-12 rounded-full object-cover border-2 border-white/30">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="AutoEval logo" class="h-12 w-12 rounded-full object-cover border-2 border-white/30">
         <div>
           <div class="font-semibold text-lg">AutoEval</div>
           <div class="text-xs opacity-90">AI Code Grading • Sonu Singh Dev</div>
         </div>
       </div>
 
-      <nav class="hidden md:flex gap-6 items-center">
-        <a href="/" class="hover:underline">Home</a>
-        
-        <a href="/about" class="hover:underline">About</a>
-        <a href="/privacy" class="hover:underline">Privacy</a>
-        <a href="https://github.com/sonudev2002" target="_blank"
-           class="ml-3 px-3 py-2 bg-white/10 rounded-md hover:bg-white/20">GitHub</a>
+      <!-- Desktop Nav -->
+      <nav class="hidden md:flex gap-6 items-center font-medium">
+        <a href="{{ url_for('index') }}" class="hover:underline">Home</a>
+        <a href="{{ url_for('about') }}" class="hover:underline">About</a>
+        <a href="{{ url_for('contact') }}" class="underline font-semibold">Contact</a>
+        <a href="{{ url_for('privacy') }}" class="hover:underline">Privacy</a>
+        <a href="https://github.com/sonudev2002" target="_blank" class="ml-3 px-3 py-2 bg-white/10 rounded-md hover:bg-white/20 transition">GitHub</a>
       </nav>
 
+      <!-- Mobile Nav Button -->
       <div class="md:hidden">
-        <button onclick="alert('Use desktop for full layout')" class="px-3 py-2 rounded bg-white/10">Menu</button>
+        <button id="menuToggle" class="px-3 py-2 rounded bg-white/10 hover:bg-white/20">☰</button>
       </div>
+    </div>
+
+    <!-- Mobile Dropdown -->
+    <div id="mobileMenu" class="hidden flex-col bg-white text-slate-800 md:hidden shadow-md">
+      <a href="{{ url_for('index') }}" class="px-6 py-3 border-b border-slate-200 hover:bg-slate-100">Home</a>
+      <a href="{{ url_for('about') }}" class="px-6 py-3 border-b border-slate-200 hover:bg-slate-100">About</a>
+      <a href="{{ url_for('contact') }}" class="px-6 py-3 border-b border-slate-200 bg-slate-100 font-semibold">Contact</a>
+      <a href="{{ url_for('privacy') }}" class="px-6 py-3 border-b border-slate-200 hover:bg-slate-100">Privacy</a>
+      <a href="https://github.com/sonudev2002" target="_blank" class="px-6 py-3 hover:bg-slate-100">GitHub</a>
     </div>
   </header>
 
-  <main class="max-w-5xl mx-auto px-6 py-16">
+  <!-- ✅ CONTACT SECTION -->
+  <section class="max-w-6xl mx-auto px-6 py-16">
+    <div class="text-center mb-12 reveal" data-reveal>
+      <h1 class="text-4xl font-extrabold mb-2">Let's Connect</h1>
+      <p class="text-slate-600">Have a question, collaboration idea, or hiring inquiry? I'd love to hear from you.</p>
+    </div>
 
-    <!-- Intro -->
-    <section class="text-center mb-16">
-      <h1 class="text-4xl font-extrabold text-teal-600 mb-3">Get in Touch</h1>
-      <p class="text-slate-600 max-w-2xl mx-auto">
-        Have a question, feedback, or opportunity? I’d love to hear from you!  
-        Whether it’s project collaboration, hiring discussions, or technical talks — feel free to connect.
-      </p>
-    </section>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+      <!-- Contact Info -->
+      <div class="reveal" data-reveal>
+        <div class="bg-white rounded-xl p-6 card-glow">
+          <h2 class="text-lg font-semibold mb-3">Contact Information</h2>
+          <p class="text-slate-600 mb-4">Reach out directly using any of the following:</p>
 
-    <!-- Grid Layout -->
-    <section class="grid md:grid-cols-2 gap-10 items-start">
+          <div class="space-y-3 text-sm">
+            <p class="flex items-center gap-3">
+              <i class="fas fa-envelope text-teal-500"></i>
+              <a href="mailto:sonudevd024@gmail.com" class="text-teal-600 hover:underline">sonudevd024@gmail.com</a>
+            </p>
+            <p class="flex items-center gap-3">
+              <i class="fab fa-linkedin text-blue-600"></i>
+              <a href="https://www.linkedin.com/in/sonu-dev-85040b1b0/" target="_blank" class="hover:underline">LinkedIn Profile</a>
+            </p>
+            <p class="flex items-center gap-3">
+              <i class="fab fa-github text-slate-700"></i>
+              <a href="https://github.com/sonudev2002" target="_blank" class="hover:underline">GitHub Repositories</a>
+            </p>
+          </div>
+        </div>
+      </div>
 
-     
-      <!-- Right: Contact Info -->
-      <div class="space-y-8 reveal" data-reveal>
-        <div>
-          <h2 class="text-2xl font-semibold mb-3">📞 Contact Information</h2>
-          <p class="text-slate-600">
-            Let’s connect on any of these platforms.  
-            I typically respond within 24 hours.
-          </p>
-          <ul class="mt-5 space-y-3 text-slate-700">
-            <li>📧 <strong>Email:</strong>
-              <a href="mailto:sonudev2002@gmail.com" class="text-teal-600 hover:underline">sonudev2002@gmail.com</a>
-            </li>
-            <li>💻 <strong>GitHub:</strong>
-              <a href="https://github.com/sonudev2002" target="_blank" class="text-teal-600 hover:underline">sonudev2002</a>
-            </li>
-            <li>💼 <strong>LinkedIn:</strong>
-              <a href="https://linkedin.com/in/sonudev2002" target="_blank" class="text-teal-600 hover:underline">linkedin.com/in/sonudev2002</a>
-            </li>
-          </ul>
+      <!-- Contact Form -->
+      <form id="contactForm" action="{{ url_for('contact') }}" method="POST" class="bg-white rounded-xl p-6 card-glow reveal" data-reveal>
+        <h2 class="text-lg font-semibold mb-3">Send a Message</h2>
+
+        <div class="grid grid-cols-1 gap-4">
+          <div>
+            <label for="name" class="text-sm text-slate-700">Full Name</label>
+            <input type="text" id="name" name="name" required class="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-teal-400 focus:outline-none" placeholder="Your name">
+          </div>
+
+          <div>
+            <label for="email" class="text-sm text-slate-700">Email Address</label>
+            <input type="email" id="email" name="email" required class="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-teal-400 focus:outline-none" placeholder="you@example.com">
+          </div>
+
+          <div>
+            <label for="message" class="text-sm text-slate-700">Message</label>
+            <textarea id="message" name="message" rows="5" required class="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-teal-400 focus:outline-none" placeholder="Your message here..."></textarea>
+          </div>
         </div>
 
-    
-      </div>
-    </section>
+        <button type="submit" class="mt-4 px-5 py-3 bg-teal-500 text-white font-medium rounded-lg hover:scale-105 transition w-full">
+          Send Message
+        </button>
 
-  </main>
+        <p id="formMessage" class="mt-4 text-center text-sm text-slate-600 hidden"></p>
+      </form>
+    </div>
+  </section>
 
-  {% include 'partials/footer.html' %}
+  <!-- ✅ FOOTER -->
+  <footer>
+    {% include 'partials/footer.html' %}
+  </footer>
 
-  <!-- JS for animation & dummy submit -->
+  <!-- ✅ SCRIPTS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/js/all.min.js"></script>
   <script>
-    // Reveal animation
-    const els = document.querySelectorAll('.reveal');
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach(e => {
-        if (e.isIntersecting) {
-          e.target.classList.add('opacity-100','translate-y-0');
-          io.unobserve(e.target);
-        }
-      });
-    }, { threshold: 0.15 });
-
-    els.forEach(el => {
-      el.classList.add('opacity-0','translate-y-4','transition-all','duration-700');
-      io.observe(el);
+    // Mobile menu toggle
+    document.getElementById('menuToggle').addEventListener('click', () => {
+      document.getElementById('mobileMenu').classList.toggle('hidden');
     });
 
-    // Fake form handler (until backend email integration)
+    // Reveal on scroll
+    const revealEls = document.querySelectorAll('[data-reveal]');
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('show'); io.unobserve(e.target); } });
+    }, { threshold: 0.12 });
+    revealEls.forEach(el => io.observe(el));
+
+    // Simulate form feedback (for front-end only)
     const form = document.getElementById('contactForm');
     const msg = document.getElementById('formMessage');
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       msg.classList.remove('hidden');
-      msg.textContent = "✅ Thanks for reaching out! Your message has been recorded.";
-      form.reset();
+      msg.textContent = 'Sending message...';
+      try {
+        const formData = new FormData(form);
+        const response = await fetch(form.action, { method: 'POST', body: formData });
+        if (response.ok) {
+          msg.textContent = '✅ Message sent successfully!';
+          msg.classList.add('text-teal-600');
+          form.reset();
+        } else {
+          msg.textContent = '❌ There was an issue sending your message.';
+          msg.classList.add('text-rose-600');
+        }
+      } catch {
+        msg.textContent = '⚠️ Network error. Please try again.';
+        msg.classList.add('text-rose-600');
+      }
     });
   </script>
-
 </body>
 </html>

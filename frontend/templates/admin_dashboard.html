@@ -5,6 +5,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
     <title>Admin Dashboard</title>
+
+    <!-- External Libraries -->
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css"
@@ -18,213 +20,296 @@
     <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-java.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-c.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-cpp.min.js"></script>
+
+    <!-- Modern Styling -->
     <style>
+      :root {
+        --primary: #007bff;
+        --primary-dark: #0056b3;
+        --bg: #f6f8fb;
+        --card: #ffffff;
+        --border: #e2e8f0;
+        --text: #1f2937;
+        --muted: #6b7280;
+        --radius: 10px;
+        --shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+      }
+
       body {
         margin: 0;
+        font-family: "Inter", system-ui, -apple-system, sans-serif;
+        background: var(--bg);
+        color: var(--text);
         display: flex;
         flex-direction: column;
         min-height: 100vh;
-        font-family: sans-serif;
+        overflow-x: hidden;
       }
 
-      footer {
-        margin-top: auto;
-        width: 100%;
-        text-align: center;
-      }
-
-      table {
-        width: 100%;
-        border-collapse: collapse;
-      }
-
-      th,
-      td {
-        border: 1px solid #ddd;
-        padding: 8px;
-        text-align: left;
-      }
-      th {
-        background: #f4f4f4;
-      }
-      button {
-        cursor: pointer;
-        padding: 5px 10px;
-        margin: 2px;
-      }
-      select,
-      input {
-        padding: 4px;
-      }
-      .filter-btns {
-        margin-bottom: 15px;
-      }
-      .filter-btns button {
-        padding: 6px 12px;
-        margin-right: 8px;
-        border: 1px solid #007bff;
-        background: #fff;
-        color: #007bff;
-        border-radius: 4px;
-      }
-      .filter-btns button.active {
-        background: #007bff;
-        color: #fff;
-      }
-      .scrollable-table {
-        max-height: 420px;
-        overflow-y: auto;
-        border: 1px solid #ddd;
-        margin-bottom: 20px;
-      }
-      .scrollable-table thead th {
-        position: sticky;
-        top: 0;
-        background: #f4f4f4;
-        z-index: 2;
-      }
+      /* ===== Tabs ===== */
       .tabs {
         display: flex;
-        background: #007bff;
+        background: var(--primary);
         color: #fff;
+        box-shadow: 0 2px 6px rgba(0, 123, 255, 0.25);
         position: sticky;
         top: 0;
         z-index: 100;
       }
       .tab-btn {
         flex: 1;
-        padding: 12px;
+        padding: 14px;
         border: none;
-        background: #007bff;
+        background: transparent;
         color: #fff;
+        font-weight: 600;
         cursor: pointer;
-        font-weight: 500;
-        transition: background 0.2s;
+        transition: background 0.25s, transform 0.15s;
       }
       .tab-btn:hover,
       .tab-btn.active {
-        background: #0056b3;
+        background: var(--primary-dark);
+        transform: translateY(-1px);
       }
+
+      /* ===== Tab Content ===== */
       .tab-content {
         display: none;
-        padding: 20px;
+        padding: 25px;
+        animation: fadeIn 0.3s ease-in-out;
       }
       .tab-content.active {
         display: block;
-        animation: fadeIn 0.3s ease;
       }
       @keyframes fadeIn {
         from {
           opacity: 0;
+          transform: translateY(10px);
         }
         to {
           opacity: 1;
+          transform: translateY(0);
         }
       }
-      a {
-        color: #007bff;
-        text-decoration: none;
+
+      /* ===== Tables ===== */
+      .scrollable-table {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow-y: auto;
+        background: #fff;
+        box-shadow: var(--shadow);
+        margin-top: 10px;
+        margin-bottom: 25px;
+        max-height: 420px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.80rem;
+      }
+      th,
+      td {
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--border);
+        text-align: left;
+      }
+      th {
+        background: #f1f5f9;
+        position: sticky;
+        top: 0;
+        font-weight: 600;
+        z-index: 2;
+      }
+      tr:hover {
+        background: #f9fafb;
       }
 
-      /* ✨ New User Form Enhancements */
-      #tab-users .row {
+      /* ===== Buttons ===== */
+      button,
+      .btn {
+        cursor: pointer;
+        border: none;
+        border-radius: 6px;
+        padding: 7px 13px;
+        font-weight: 500;
+        font-size: 0.80rem;
+        transition: all 0.2s ease-in-out;
+      }
+      .btn-primary {
+        background: var(--primary);
+        color: white;
+      }
+      .btn-primary:hover {
+        background: var(--primary-dark);
+        box-shadow: 0 4px 10px rgba(0, 123, 255, 0.25);
+      }
+      .btn-outline {
+        background: transparent;
+        color: var(--primary);
+        border: 1px solid var(--primary);
+      }
+      .btn-outline:hover {
+        background: var(--primary);
+        color: white;
+      }
+
+      /* ===== Filter Buttons ===== */
+      .filter-btns {
         display: flex;
         flex-wrap: wrap;
-        gap: 15px;
-      }
-
-      #tab-users .row.mb-3 > * {
-        flex: 1 1 48%;
-      }
-
-      @media (max-width: 768px) {
-        #tab-users .row.mb-3 > * {
-          flex: 1 1 100%;
-        }
-      }
-
-      #tab-users {
-        background: #f9fafc;
-        border-radius: 10px;
-        padding: 25px;
-        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
-      }
-
-      #tab-users h3 {
-        font-size: 1.5rem;
-        color: #007bff;
+        gap: 10px;
         margin-bottom: 20px;
-        border-bottom: 2px solid #007bff33;
-        padding-bottom: 8px;
       }
-
-      #tab-users form {
-        max-width: 700px;
-        margin: auto;
+      .filter-btns button {
         background: #fff;
-        padding: 25px;
-        border-radius: 10px;
-        border: 1px solid #dee2e6;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        border: 1px solid var(--primary);
+        color: var(--primary);
+        border-radius: 6px;
+      }
+      .filter-btns button.active {
+        background: var(--primary);
+        color: #fff;
       }
 
-      #tab-users .row {
-        margin-bottom: 15px;
+      /* ===== User Form (Two Columns) ===== */
+      #tab-users {
+        background: var(--card);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 30px;
+        max-width: 1200px;
+        margin: 20px auto;
       }
-
-      #tab-users label {
+      #tab-users h3 {
+        color: var(--primary);
+        border-bottom: 2px solid rgba(0, 123, 255, 0.2);
+        padding-bottom: 10px;
+        margin-bottom: 25px;
+        font-weight: 600;
+      }
+      .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+        gap: 25px 40px;
+      }
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 12px;
+      }
+      .form-group label {
         font-weight: 600;
         color: #333;
         margin-bottom: 5px;
-        display: block;
+        font-size: 0.85rem;
       }
-
-      #tab-users input[type="text"],
-      #tab-users input[type="email"],
-      #tab-users input[type="password"],
-      #tab-users select,
-      #tab-users textarea {
-        width: 100%;
+      .form-control,
+      .form-select,
+      textarea {
         padding: 10px 12px;
-        border: 1px solid #ced4da;
+        border: 1px solid var(--border);
         border-radius: 6px;
-        font-size: 0.95rem;
-        background: #fff;
-        transition: all 0.2s ease;
+        font-size: 0.85rem;
       }
-
-      #tab-users input:focus,
-      #tab-users select:focus,
-      #tab-users textarea:focus {
-        border-color: #007bff;
-        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.2);
+      .form-control:focus,
+      .form-select:focus,
+      textarea:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.15);
         outline: none;
       }
 
-      #tab-users .btn-primary {
-        background: linear-gradient(135deg, #007bff, #0056b3);
-        border: none;
-        padding: 10px 20px;
+      /* ===== Chart Layout (Grades + System Shared) ===== */
+      .chart-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+        gap: 25px;
+        margin-top: 25px;
+      }
+      .chart-card {
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 20px;
+        text-align: center;
+        height: 350px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+      .chart-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+      }
+      .chart-card h4 {
+        color: var(--primary);
+        font-size: 0.9rem;
         font-weight: 600;
-        font-size: 1rem;
-        border-radius: 6px;
-        color: #fff;
-        transition: all 0.3s ease;
+        margin-bottom: 15px;
+      }
+      .chart-card canvas {
+        width: 100% !important;
+        height: 280px !important;
       }
 
-      #tab-users .btn-primary:hover {
-        background: linear-gradient(135deg, #0069d9, #004999);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
-      }
-
-      #email-status {
+      /* ===== Error Column ===== */
+      #tab-lists td:nth-child(9),
+      #tab-lists .error-cell {
+        max-width: 180px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        cursor: help;
+        position: relative;
+        color: #b91c1c;
         font-weight: 500;
-        transition: color 0.3s ease;
+      }
+      #tab-lists td:nth-child(9):hover::after,
+      #tab-lists .error-cell:hover::after {
+        content: attr(data-full-error);
+        position: absolute;
+        left: 0;
+        top: 100%;
+        background: #fff7f7;
+        border: 1px solid #fca5a5;
+        border-radius: 6px;
+        padding: 8px 10px;
+        white-space: pre-wrap;
+        max-width: 300px;
+        z-index: 10;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
       }
 
-      #email-status::before {
-        content: "• ";
+      /* ===== Footer ===== */
+      footer {
+        margin-top: auto;
+        text-align: center;
+        padding: 15px 0;
+        background: #f8fafc;
+        font-size: 0.85rem;
+        color: var(--muted);
+        border-top: 1px solid var(--border);
+      }
+
+      /* ===== Responsive ===== */
+      @media (max-width: 900px) {
+        .chart-grid {
+          grid-template-columns: 1fr;
+        }
+        .chart-card {
+          height: 300px;
+        }
+        .chart-card canvas {
+          height: 250px !important;
+        }
+        table th,
+        table td {
+          font-size: 0.8rem;
+          padding: 8px;
+        }
       }
     </style>
   </head>
@@ -301,35 +386,45 @@
         <div id="tab-grades" class="tab-content">
           <h3>
             Grade Distributions
-            <button onclick="downloadChart(adminGradeChart,'grades.png')">
+            <button
+              class="btn btn-outline"
+              onclick="downloadChart(adminGradeChart, 'grades.png')"
+            >
               ⬇
             </button>
           </h3>
+
+          <!-- Filter Buttons -->
           <div class="filter-btns">
-            <button onclick="fetchOverall()">🌍 Overall</button
-            ><button onclick="fetchTrends()">📈 Trends</button>
-            <button onclick="fetchGroup('student')">👩‍🎓 Students</button
-            ><button onclick="fetchGroup('instructor')">👨‍🏫 Instructors</button>
-            <button onclick="fetchAggregate('student')">👩‍🎓 Total</button
-            ><button onclick="fetchAggregate('instructor')">👨‍🏫 Total</button>
+            <button onclick="fetchOverall()">🌍 Overall</button>
+            <button onclick="fetchTrends()">📈 Trends</button>
+            <button onclick="fetchGroup('student')">👩‍🎓 Students</button>
+            <button onclick="fetchGroup('instructor')">👨‍🏫 Instructors</button>
+            <button onclick="fetchAggregate('student')">👩‍🎓 Total</button>
+            <button onclick="fetchAggregate('instructor')">👨‍🏫 Total</button>
           </div>
-          <div>
+
+          <!-- Search + Filter Row -->
+          <div class="filter-bar">
             <select id="roleSelect">
               <option value="student">Student</option>
               <option value="instructor">Instructor</option>
             </select>
-            <input id="searchGradeInput" placeholder="User ID/Email" /><button
-              onclick="searchGrades()"
-            >
-              🔍
-            </button>
+            <input id="searchGradeInput" placeholder="User ID/Email" />
+            <button class="btn btn-primary" onclick="searchGrades()">🔍</button>
           </div>
-          <div class="scrollable-table">
-            <canvas id="adminGradeChart" height="150"></canvas>
-          </div>
-          <h3>Grade History</h3>
-          <div class="scrollable-table">
-            <canvas id="gradeHistoryChart" height="150"></canvas>
+
+          <!-- Charts Grid (aligned perfectly) -->
+          <div class="chart-grid">
+            <div class="chart-card">
+              <h4>Overall Grade Distribution</h4>
+              <canvas id="adminGradeChart"></canvas>
+            </div>
+
+            <div class="chart-card">
+              <h4>Grade History</h4>
+              <canvas id="gradeHistoryChart"></canvas>
+            </div>
           </div>
         </div>
 
@@ -443,7 +538,7 @@
                   <th>Email</th>
                   <th>Profile</th>
                   <th>Performance history</th>
-                  <th> Delete </th>
+                  <th>Delete</th>
                 </tr>
               </thead>
               <tbody id="instructors-body">
@@ -473,7 +568,7 @@
                   <th>Email</th>
                   <th>Profile</th>
                   <th>Performance history</th>
-                  <th> Delete </th>
+                  <th>Delete</th>
                 </tr>
               </thead>
               <tbody id="students-body">
@@ -488,16 +583,27 @@
         <!-- ⚙️ SYSTEM -->
         <div id="tab-system" class="tab-content">
           <h3>System Stats</h3>
-          <div>
-            <button onclick="updateSystemStats()">🔄</button
-            ><button onclick="downloadChart(gradeChart,'system_stats.png')">
-              ⬇ Graph</button
-            ><button
-              onclick="downloadTableCSV('system-stats-body','system_stats.csv')"
+
+          <!-- Control Buttons -->
+          <div class="action-bar">
+            <button class="btn btn-outline" onclick="updateSystemStats()">
+              🔄 Refresh
+            </button>
+            <button
+              class="btn btn-outline"
+              onclick="downloadChart(gradeChart, 'system_stats.png')"
+            >
+              ⬇ Graph
+            </button>
+            <button
+              class="btn btn-outline"
+              onclick="downloadTableCSV('system-stats-body', 'system_stats.csv')"
             >
               ⬇ CSV
             </button>
           </div>
+
+          <!-- Table: Overall System Stats -->
           <div class="scrollable-table">
             <table>
               <thead>
@@ -508,7 +614,7 @@
                   <th>Active</th>
                   <th>Avg</th>
                   <th>Subs</th>
-                  <th>New(7d)</th>
+                  <th>New (7d)</th>
                   <th>Grades</th>
                 </tr>
               </thead>
@@ -519,10 +625,18 @@
               </tbody>
             </table>
           </div>
-          <canvas id="gradeChart" height="100"></canvas>
-          <h3>History</h3>
-          <div class="scrollable-table">
-            <canvas id="systemHistoryChart" height="150"></canvas>
+
+          <!-- Side-by-Side Charts -->
+          <div class="chart-grid">
+            <div class="chart-card">
+              <h4>Grade Distribution</h4>
+              <canvas id="gradeChart"></canvas>
+            </div>
+
+            <div class="chart-card">
+              <h4>System History</h4>
+              <canvas id="systemHistoryChart"></canvas>
+            </div>
           </div>
         </div>
 
@@ -597,126 +711,157 @@
         <!-- 👤 NEW USER -->
         <div id="tab-users" class="tab-content">
           <h3>Create New User</h3>
+
           <form id="new-user-form" enctype="multipart/form-data">
-            <div class="row mb-3">
-              <label>Email</label>
-              <div style="display: flex; gap: 10px; align-items: center">
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  class="form-control"
-                  required
-                />
-                <span id="email-status" style="font-size: 0.9rem"></span>
+            <div class="form-grid">
+              <!-- Left Column -->
+              <div class="form-col">
+                <div class="form-group">
+                  <label>First Name</label>
+                  <input
+                    type="text"
+                    id="first_name"
+                    name="first_name"
+                    class="form-control"
+                    required
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label>Middle Name</label>
+                  <input
+                    type="text"
+                    id="middle_name"
+                    name="middle_name"
+                    class="form-control"
+                    required
+                  />
+                </div>
+                <div class="form-group">
+                  <label>Last Name</label>
+                  <input
+                    type="text"
+                    id="last_name"
+                    name="last_name"
+                    class="form-control"
+                    required
+                  />
+                </div>
+                <div class="form-group">
+                  <label>Email</label>
+                  <div class="inline-input">
+                    <input
+                      type="email"
+                      id="email"
+                      name="email"
+                      class="form-control"
+                      required
+                    />
+                    <span id="email-status" style="font-size: 0.9rem"></span>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label>Mobile</label>
+                  <input
+                    type="text"
+                    id="mobile"
+                    name="mobile"
+                    maxlength="10"
+                    class="form-control"
+                    required
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label>Password</label>
+                  <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    class="form-control"
+                    required
+                  />
+                </div>
+              </div>
+
+              <!-- Right Column -->
+              <div class="form-col">
+                <div class="form-group">
+                  <label>Role</label>
+                  <select id="role" name="role" class="form-select" required>
+                    <option value="student">Student</option>
+                    <option value="instructor">Instructor</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label>Profile Picture (optional)</label>
+                  <input
+                    type="file"
+                    id="profile_picture"
+                    name="profile_picture"
+                    class="form-control"
+                  />
+                </div>
+                <div class="form-group">
+                  <label>Country</label>
+                  <input
+                    type="text"
+                    id="country"
+                    name="country"
+                    class="form-control"
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label>State</label>
+                  <input
+                    type="text"
+                    id="state"
+                    name="state"
+                    class="form-control"
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label>District</label>
+                  <input
+                    type="text"
+                    id="district"
+                    name="district"
+                    class="form-control"
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label>Local Address</label>
+                  <textarea
+                    id="local_address"
+                    name="local_address"
+                    rows="2"
+                    class="form-control"
+                  ></textarea>
+                </div>
+
+                <div class="form-group">
+                  <label>Pincode</label>
+                  <input
+                    type="text"
+                    id="pincode"
+                    name="pincode"
+                    class="form-control"
+                  />
+                </div>
               </div>
             </div>
 
-            <div class="row mb-3">
-              <label>Mobile</label>
-              <input
-                type="text"
-                id="mobile"
-                name="mobile"
-                maxlength="10"
-                class="form-control"
-                required
-              />
+            <div class="form-submit">
+              <button type="submit" class="btn btn-primary">
+                ➕ Create User
+              </button>
             </div>
-            <div class="row mb-3">
-              <label>Password</label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                class="form-control"
-                required
-              />
-            </div>
-            <div class="row mb-3">
-              <label>Role</label>
-              <select id="role" name="role" class="form-select" required>
-                <option value="student">Student</option>
-                <option value="instructor">Instructor</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
-
-            <div class="row mb-3">
-              <label>First Name</label>
-              <input
-                type="text"
-                id="first_name"
-                name="first_name"
-                class="form-control"
-                required
-              />
-            </div>
-            <div class="row mb-3">
-              <label>Last Name</label>
-              <input
-                type="text"
-                id="last_name"
-                name="last_name"
-                class="form-control"
-                required
-              />
-            </div>
-
-            <div class="row mb-3">
-              <label>Profile Picture (optional)</label>
-              <input
-                type="file"
-                id="profile_picture"
-                name="profile_picture"
-                class="form-control"
-              />
-            </div>
-
-            <div class="row mb-3">
-              <label>Country</label>
-              <input
-                type="text"
-                id="country"
-                name="country"
-                class="form-control"
-              />
-            </div>
-            <div class="row mb-3">
-              <label>State</label>
-              <input type="text" id="state" name="state" class="form-control" />
-            </div>
-            <div class="row mb-3">
-              <label>District</label>
-              <input
-                type="text"
-                id="district"
-                name="district"
-                class="form-control"
-              />
-            </div>
-            <div class="row mb-3">
-              <label>Local Address</label>
-              <textarea
-                id="local_address"
-                name="local_address"
-                rows="2"
-                class="form-control"
-              ></textarea>
-            </div>
-            <div class="row mb-3">
-              <label>Pincode</label>
-              <input
-                type="text"
-                id="pincode"
-                name="pincode"
-                class="form-control"
-              />
-            </div>
-
-            <button type="submit" class="btn btn-primary">
-              ➕ Create User
-            </button>
           </form>
         </div>
       </div>
@@ -1577,7 +1722,6 @@
   <td><a href="${performance_historyUrl}">📈 View</a></td>
   <td><button class="btn btn-sm" onclick="deleteUser(${u.user_id})" style="color: red;">❌ Delete</button></td>
 </tr>`;
-
         });
       }
 
@@ -1954,80 +2098,79 @@
         if (email) checkEmailAvailability(email);
       });
 
-// ------------------ CREATE NEW USER ------------------
-document
-  .getElementById("new-user-form")
-  ?.addEventListener("submit", async function (e) {
-    e.preventDefault();
+      // ------------------ CREATE NEW USER ------------------
+      document
+        .getElementById("new-user-form")
+        ?.addEventListener("submit", async function (e) {
+          e.preventDefault();
 
-    const statusEl = document.getElementById("email-status");
-    if (statusEl.textContent.includes("Already registered")) {
-      Swal.fire(
-        "⚠️ Email Exists",
-        "Please use another email address.",
-        "warning"
-      );
-      return;
-    }
+          const statusEl = document.getElementById("email-status");
+          if (statusEl.textContent.includes("Already registered")) {
+            Swal.fire(
+              "⚠️ Email Exists",
+              "Please use another email address.",
+              "warning"
+            );
+            return;
+          }
 
-    const formData = new FormData(this);
-    try {
-      const res = await fetch("/admin/create_user", {
-        method: "POST",
-        body: formData,
-        credentials: "include" // ✅ FIX: send Flask session cookie
-      });
-      const data = await res.json();
+          const formData = new FormData(this);
+          try {
+            const res = await fetch("/admin/create_user", {
+              method: "POST",
+              body: formData,
+              credentials: "include", // ✅ FIX: send Flask session cookie
+            });
+            const data = await res.json();
 
-      if (data.success) {
-        Swal.fire("✅ Success", data.message, "success");
-        this.reset();
-        document.getElementById("email-status").textContent = "";
-      } else {
-        Swal.fire(
-          "❌ Failed",
-          data.message || "User creation failed",
-          "error"
-        );
+            if (data.success) {
+              Swal.fire("✅ Success", data.message, "success");
+              this.reset();
+              document.getElementById("email-status").textContent = "";
+            } else {
+              Swal.fire(
+                "❌ Failed",
+                data.message || "User creation failed",
+                "error"
+              );
+            }
+          } catch (err) {
+            Swal.fire("Error", err.message || "Network error", "error");
+          }
+        });
+
+      async function deleteUser(userId) {
+        if (!userId) return Swal.fire("Error", "Missing user id", "error");
+
+        const confirmed = await Swal.fire({
+          title: "Delete user?",
+          text: "This permanently deletes the user and their related data (submissions, notifications, issues). This action cannot be undone.",
+          icon: "warning",
+          showCancelButton: true,
+          confirmButtonText: "Yes, delete",
+          cancelButtonText: "Cancel",
+        });
+
+        if (!confirmed.isConfirmed) return;
+
+        try {
+          const res = await fetch("/admin/delete_user", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_id: userId }),
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            Swal.fire("Deleted", data.message || "User deleted", "success");
+            // remove row from DOM if you have a way; else reload list
+            setTimeout(() => location.reload(), 800);
+          } else {
+            Swal.fire("Error", data.message || "Delete failed", "error");
+          }
+        } catch (err) {
+          Swal.fire("Error", "Request failed: " + err, "error");
+        }
       }
-    } catch (err) {
-      Swal.fire("Error", err.message || "Network error", "error");
-    }
-  });
-
-  async function deleteUser(userId) {
-  if (!userId) return Swal.fire("Error", "Missing user id", "error");
-
-  const confirmed = await Swal.fire({
-    title: "Delete user?",
-    text: "This permanently deletes the user and their related data (submissions, notifications, issues). This action cannot be undone.",
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonText: "Yes, delete",
-    cancelButtonText: "Cancel",
-  });
-
-  if (!confirmed.isConfirmed) return;
-
-  try {
-    const res = await fetch("/admin/delete_user", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: userId }),
-    });
-    const data = await res.json();
-    if (res.ok && data.success) {
-      Swal.fire("Deleted", data.message || "User deleted", "success");
-      // remove row from DOM if you have a way; else reload list
-      setTimeout(() => location.reload(), 800);
-    } else {
-      Swal.fire("Error", data.message || "Delete failed", "error");
-    }
-  } catch (err) {
-    Swal.fire("Error", "Request failed: " + err, "error");
-  }
-}
-
     </script>
     <!-- 📊 Grade Distribution Modal -->
     <div
@@ -2072,7 +2215,6 @@ document
       </div>
     </div>
 
-    
     <script>
       // Optional: close when clicking outside modal
       document.getElementById("gradeModal").addEventListener("click", (e) => {

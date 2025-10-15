@@ -1,122 +1,546 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Performance History</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<body class="bg-light">
-  <header class="bg-dark text-white p-3 d-flex justify-content-between align-items-center">
-    <div>
-      <button class="btn btn-sm btn-outline-light me-2" onclick="history.back()">← Back</button>
-      <button class="btn btn-sm btn-outline-light me-2" onclick="goHome()">🏠 Home</button>
-    </div>
-    <h4 class="m-0">Performance History - {{ user.first_name or user.email }}</h4>
-    <div></div>
-  </header>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Performance History - {{ user.first_name or user.email }}</title>
 
-  <div class="container mt-4">
-    <div class="row">
-      <!-- Left: Completed Assignments -->
-      <div class="col-md-4 mb-4">
-        <div class="card shadow-sm">
-          <div class="card-header bg-primary text-white">Completed Assignments</div>
-          <div class="card-body">
-            {% for level, assignments in completed_assignments.items() %}
-              <h6 class="mb-2">{{ level }}</h6>
-              <div class="mb-3">
-                {% for a in assignments %}
-                  <a class="badge bg-secondary text-decoration-none mb-1 d-inline-block" href="/code_submission_report?submission_id={{ a.submission_id or '' }}">{{ a.assignment_id }} {{ a.title or '' }}</a>
-                {% endfor %}
-              </div>
-              {% if not loop.last %}<hr />{% endif %}
-            {% endfor %}
-            {% if completed_assignments|length == 0 %}
-              <p class="text-muted">No completed assignments found.</p>
-            {% endif %}
-          </div>
-        </div>
-      </div>
+    <!-- Fonts & Bootstrap -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.4.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-      <!-- Right: Analytics -->
-      <div class="col-md-8 mb-4">
-        <div class="card shadow-sm">
-          <div class="card-header bg-success text-white">Performance Overview</div>
-          <div class="card-body">
-            <p><strong>Average Score:</strong> {{ report.average_score or 0 }}%</p>
-            <p><strong>Completion Rate:</strong> {{ report.completion_rate or 0 }}%</p>
-            <p><strong>Pass Rate:</strong> {{ report.pass_rate or 0 }}%</p>
-            <p><strong>Plagiarism Incidents:</strong> {{ report.plagiarism_incidents or 0 }}</p>
-            <p><strong>Performance Band:</strong> {{ report.performance_band or 'N/A' }}</p>
-            <hr />
-            <h6 class="text-muted">📈 Performance by Difficulty Level</h6>
-            <canvas id="difficultyChart"></canvas>
-            <hr />
-            <h6 class="text-muted">📊 Grade Distribution</h6>
-            <canvas id="gradeDistChart"></canvas>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+    <style>
+      :root {
+        --bg: #f6f9fb;
+        --card: #ffffff;
+        --muted: #64748b;
+        --primary: #0f766e;
+        --accent: #2563eb;
+        --radius: 12px;
+        --shadow: 0 10px 30px rgba(2, 6, 23, 0.06);
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+        background: var(--bg);
+        color: #071124;
+      }
+      /* Header */
+      header.site-header {
+        height: 64px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(90deg, var(--primary), var(--accent));
+        color: #fff;
+        box-shadow: var(--shadow);
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+      }
+      .header-left {
+        position: absolute;
+        left: 16px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .icon-btn {
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+        border: 0;
+        padding: 8px 10px;
+        border-radius: 8px;
+        font-size: 18px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+      }
+      .title {
+        font-weight: 700;
+        font-size: 1.05rem;
+        letter-spacing: 0.2px;
+        text-align: center;
+      }
+      /* Page wrapper, 2x2 grid trimmed to viewport */
+      main.container-grid {
+        max-width: 1200px;
+        margin: 14px auto;
+        height: calc(100vh - 64px - 64px); /* header + footer approx */
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 1fr 1fr;
+        gap: 12px;
+        height: 100%;
+      }
+      /* Cards */
+      .card-compact {
+        background: var(--card);
+        border-radius: var(--radius);
+        padding: 10px;
+        box-shadow: var(--shadow);
+        border: 1px solid rgba(2, 6, 23, 0.04);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .card-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 6px;
+        border-bottom: 1px solid rgba(2, 6, 23, 0.04);
+        margin-bottom: 8px;
+        font-weight: 600;
+      }
+      .card-body {
+        flex: 1 1 auto;
+        overflow: auto;
+        padding: 4px 2px;
+      }
 
-  {% include 'partials/footer.html' %}
-  <script>
-    // Difficulty chart (safe guards if values missing)
-    const diffLabels = {{ report.difficulty_labels|default('[]')|safe }};
-    const assignmentCounts = {{ report.assignment_counts|default('[]')|safe }};
-    const avgScores = {{ report.avg_scores|default('[]')|safe }};
-    const passRates = {{ report.pass_rates|default('[]')|safe }};
+      /* Performance overview table */
+      .overview-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.95rem;
+      }
+      .overview-table td {
+        padding: 8px 6px;
+        vertical-align: middle;
+      }
+      .overview-table tr + tr td {
+        border-top: 1px dashed rgba(2, 6, 23, 0.04);
+      }
+      .metric-label {
+        color: var(--muted);
+        font-weight: 600;
+        width: 55%;
+      }
+      .metric-value {
+        text-align: right;
+        font-weight: 700;
+        color: var(--primary);
+      }
 
-    if (diffLabels && diffLabels.length) {
-      new Chart(document.getElementById('difficultyChart'), {
-        type: 'bar',
-        data: {
-          labels: diffLabels,
-          datasets: [
-            { label: 'Assignments', data: assignmentCounts, backgroundColor: 'rgba(54,162,235,0.6)' },
-            { label: 'Avg Score (%)', data: avgScores, backgroundColor: 'rgba(75,192,192,0.6)' },
-            { label: 'Pass Rate (%)', data: passRates, backgroundColor: 'rgba(255,206,86,0.6)' }
-          ]
-        },
-        options: { responsive: true, scales: { y: { beginAtZero: true } } }
-      });
-    }
+      /* Completed assignments list - compact tags with link on title only */
+      .assign-group {
+        margin-bottom: 8px;
+      }
+      .assign-title-inline {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding: 6px 8px;
+        border-radius: 8px;
+        background: linear-gradient(90deg, #f8fafc, #ffffff);
+        border: 1px solid rgba(2, 6, 23, 0.03);
+      }
+      .assign-id {
+        background: #eef2ff;
+        color: #0b3ba6;
+        font-weight: 700;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 0.82rem;
+      }
+      .assign-link {
+        color: #0b3ba6;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.92rem;
+      }
+      .assign-link:hover {
+        text-decoration: underline;
+      }
+      .assign-meta {
+        color: var(--muted);
+        font-size: 0.82rem;
+        margin-left: 8px;
+      }
 
-    // Grade distribution fetch (use your existing API)
-    (function(){
-      const userId = {{ user.user_id }};
-      fetch(`/api/analytics/grades/profile/${userId}`)
-        .then(r => r.json())
-        .then(res => {
-          if (res.status === 'success') {
-            const ctx = document.getElementById('gradeDistChart');
-            new Chart(ctx, {
-              type: 'bar',
-              data: {
-                labels: Object.keys(res.data),
-                datasets: [{ label: 'Grades', data: Object.values(res.data) }]
-              },
-              options: { responsive: true, scales: { y: { beginAtZero: true } } }
-            });
-          }
-        })
-        .catch(err => console.error(err));
-    })();
+      /* charts */
+      .chart-wrap {
+        height: 100%;
+        min-height: 120px;
+        max-height: 260px;
+        position: relative;
+      }
+      .chart-canvas {
+        width: 100% !important;
+        height: 100% !important;
+      }
 
-     function goHome() {
-        const role = "{{ session['user']['role'] }}"; // ✅ now it's a string
-        if (role === "student") {
-          window.location.href = "/student_dashboard";
-        } else if (role === "instructor") {
-          window.location.href = "/instructor_dashboard";
-        } else if (role === "admin") {
-          window.location.href = "/admin_dashboard";
-        } else {
-          window.location.href = "/";
+      /* footer */
+      footer.page-footer {
+        height: 64px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-top: 8px;
+      }
+
+      /* responsive: stack vertically on small screens */
+      @media (max-width: 920px) {
+        .grid {
+          grid-template-columns: 1fr;
+          grid-template-rows: auto auto auto auto;
+          height: auto;
+        }
+        main.container-grid {
+          height: auto;
+          margin-bottom: 30px;
         }
       }
-  </script>
-</body>
+    </style>
+  </head>
+  <body>
+    <!-- header with centered title (Back/Home on left) -->
+    <header class="site-header" role="banner">
+      <div class="header-left">
+        <button
+          class="icon-btn"
+          onclick="history.back()"
+          aria-label="Back"
+          title="Back"
+          style="font-size: 20px"
+        >
+          ◀ Back
+        </button>
+        <button
+          class="icon-btn"
+          onclick="goHome()"
+          aria-label="Home"
+          title="Home"
+          style="font-size: 20px"
+        >
+          🏠 Home
+        </button>
+      </div>
+
+      <div class="title">
+        Performance History - {{ user.first_name or user.email }}
+      </div>
+    </header>
+
+    <main class="container-grid" role="main">
+      <div class="grid">
+        <!-- LEFT TOP: Performance Overview (table rows) -->
+        <section class="card-compact" aria-labelledby="overviewTitle">
+          <div class="card-head">
+            <div id="overviewTitle">Performance Overview</div>
+            <div style="font-size: 0.82rem; color: var(--muted)">Summary</div>
+          </div>
+
+          <div class="card-body">
+            <table
+              class="overview-table"
+              role="table"
+              aria-label="Performance metrics"
+            >
+              <tr>
+                <td class="metric-label">Average Score</td>
+                <td class="metric-value">{{ report.average_score or 0 }}%</td>
+              </tr>
+              <tr>
+                <td class="metric-label">Completion Rate</td>
+                <td class="metric-value">{{ report.completion_rate or 0 }}%</td>
+              </tr>
+              <tr>
+                <td class="metric-label">Pass Rate</td>
+                <td class="metric-value">{{ report.pass_rate or 0 }}%</td>
+              </tr>
+              <tr>
+                <td class="metric-label">Plagiarism Incidents</td>
+                <td class="metric-value">
+                  {{ report.plagiarism_incidents or 0 }}
+                </td>
+              </tr>
+              <tr>
+                <td class="metric-label">Performance Band</td>
+                <td class="metric-value">
+                  {{ report.performance_band or 'N/A' }}
+                </td>
+              </tr>
+            </table>
+          </div>
+        </section>
+
+        <!-- RIGHT TOP: Performance by Difficulty -->
+        <section class="card-compact" aria-labelledby="difficultyTitle">
+          <div class="card-head">
+            <div id="difficultyTitle">📈 Performance by Difficulty</div>
+            <div style="font-size: 0.82rem; color: var(--muted)">
+              Assignments vs Avg Score vs Pass Rate
+            </div>
+          </div>
+
+          <div class="card-body">
+            <div class="chart-wrap">
+              <canvas
+                id="difficultyChart"
+                class="chart-canvas"
+                role="img"
+                aria-label="Difficulty chart"
+              ></canvas>
+            </div>
+          </div>
+        </section>
+
+        <!-- LEFT BOTTOM: Completed Assignments (grouped by difficulty) -->
+        <section class="card-compact" aria-labelledby="completedTitle">
+          <div class="card-head">
+            <div id="completedTitle">Completed Assignments</div>
+            <div style="font-size: 0.82rem; color: var(--muted)">
+              Click the assignment title to view submission
+            </div>
+          </div>
+
+          <div class="card-body">
+            {% if completed_assignments|length == 0 %}
+            <div style="color: var(--muted)">
+              No completed assignments found.
+            </div>
+            {% else %} {% for level, assignments in
+            completed_assignments.items() %}
+            <div class="assign-group" aria-label="{{ level }}">
+              <div
+                style="font-weight: 700; margin-bottom: 6px; font-size: 0.92rem"
+              >
+                {{ level }}
+              </div>
+
+              {% for a in assignments %}
+              <div class="assign-title-inline" style="margin-bottom: 6px">
+                <div class="assign-id">{{ a.assignment_id }}</div>
+                <div style="display: flex; flex-direction: column">
+                  <div>
+                    <!-- LINK wraps title only -->
+                    <a
+                      class="assign-link"
+                      href="/code_submission_report?submission_id={{ a.submission_id or '' }}"
+                      title="{{ a.title or '' }}"
+                    >
+                      {{ a.title or 'Untitled Assignment' }}
+                    </a>
+                  </div>
+                  <div class="assign-meta">{{ a.submitted_at or '' }}</div>
+                </div>
+                <div
+                  style="
+                    margin-left: auto;
+                    text-align: right;
+                    font-weight: 700;
+                    color: var(--primary);
+                  "
+                >
+                  {{ a.score or '—' }}
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            {% endfor %} {% endif %}
+          </div>
+        </section>
+
+        <!-- RIGHT BOTTOM: Grade Distribution -->
+        <section class="card-compact" aria-labelledby="gradeTitle">
+          <div class="card-head">
+            <div id="gradeTitle">📊 Grade Distribution</div>
+            <div style="font-size: 0.82rem; color: var(--muted)">
+              Distribution across grades
+            </div>
+          </div>
+
+          <div class="card-body">
+            <div class="chart-wrap">
+              <canvas
+                id="gradeDistChart"
+                class="chart-canvas"
+                role="img"
+                aria-label="Grade distribution chart"
+              ></canvas>
+            </div>
+            <div
+              id="gradeEmptyMsg"
+              style="
+                color: var(--muted);
+                font-size: 0.9rem;
+                margin-top: 8px;
+                display: none;
+              "
+            >
+              No grade data available.
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer>{% include 'partials/footer.html' %}</footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.4.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+      // Jinja-provided arrays
+      const diffLabels = {{ report.difficulty_labels|default('[]')|safe }};
+      const assignmentCounts = {{ report.assignment_counts|default('[]')|safe }};
+      const avgScores = {{ report.avg_scores|default('[]')|safe }};
+      const passRates = {{ report.pass_rates|default('[]')|safe }};
+
+      // Helper for gradients (safe if chartArea available)
+      function gradientFor(ctx, area, c1, c2){
+        if (!area) return c1;
+        const g = ctx.createLinearGradient(0, area.bottom, 0, area.top);
+        g.addColorStop(0, c1);
+        g.addColorStop(1, c2);
+        return g;
+      }
+
+      // Difficulty Chart (enhanced visuals)
+      function renderDifficulty(){
+        const canvas = document.getElementById('difficultyChart'); if(!canvas) return;
+        if (canvas._chart) canvas._chart.destroy();
+        const ctx = canvas.getContext('2d');
+
+        canvas._chart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: diffLabels,
+            datasets: [
+              {
+                label: 'Assignments',
+                data: assignmentCounts,
+                backgroundColor(context){
+                  const chart = context.chart;
+                  const area = chart.chartArea;
+                  return gradientFor(chart.ctx, area, 'rgba(37,99,235,0.95)', 'rgba(99,102,241,0.7)');
+                },
+                borderRadius: 6,
+                barThickness: 18
+              },
+              {
+                label: 'Avg Score (%)',
+                data: avgScores,
+                backgroundColor(context){
+                  const chart = context.chart;
+                  const area = chart.chartArea;
+                  return gradientFor(chart.ctx, area, 'rgba(16,185,129,0.95)', 'rgba(34,197,94,0.55)');
+                },
+                borderRadius: 6,
+                barThickness: 18
+              },
+              {
+                label: 'Pass Rate (%)',
+                data: passRates,
+                backgroundColor(context){
+                  const chart = context.chart;
+                  const area = chart.chartArea;
+                  return gradientFor(chart.ctx, area, 'rgba(245,158,11,0.95)', 'rgba(250,204,21,0.55)');
+                },
+                borderRadius: 6,
+                barThickness: 18
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+              legend:{ position: 'bottom', labels: { boxWidth:12, padding:10 } },
+              tooltip: {
+                enabled: true,
+                padding: 8,
+                titleFont: { weight:700 },
+                bodyFont: { size:13 },
+                callbacks: {
+                  label: function(ctx){
+                    let val = ctx.parsed.y;
+                    // append % for score/pass datasets (heuristic)
+                    if (ctx.dataset.label.toLowerCase().includes('score') || ctx.dataset.label.toLowerCase().includes('rate')) return ctx.dataset.label + ': ' + val + '%';
+                    return ctx.dataset.label + ': ' + val;
+                  }
+                }
+              }
+            },
+            scales: {
+              x: { stacked: false, ticks: { maxRotation:30, autoSkip:true } },
+              y: { beginAtZero: true, ticks: { precision:0 } }
+            },
+            animation: { duration: 600, easing: 'easeOutQuart' }
+          }
+        });
+      }
+
+      // Grade Distribution
+      (function(){
+        const userId = {{ user.user_id }};
+        const canvas = document.getElementById('gradeDistChart');
+        fetch(`/api/analytics/grades/profile/${userId}`)
+          .then(r => r.ok ? r.json() : Promise.reject('network'))
+          .then(res => {
+            if (!res || res.status !== 'success' || !res.data || Object.keys(res.data).length === 0) {
+              document.getElementById('gradeEmptyMsg').style.display='block'; return;
+            }
+            const labels = Object.keys(res.data);
+            const values = Object.values(res.data);
+            if (canvas._chart) canvas._chart.destroy();
+            const ctx = canvas.getContext('2d');
+            canvas._chart = new Chart(ctx, {
+              type: 'bar',
+              data: {
+                labels: labels,
+                datasets: [{
+                  label: 'Grades',
+                  data: values,
+                  backgroundColor(context){
+                    const chart = context.chart;
+                    return gradientFor(chart.ctx, chart.chartArea, 'rgba(99,102,241,0.95)', 'rgba(124,58,237,0.65)');
+                  },
+                  borderColor: 'rgba(67,56,202,0.9)',
+                  borderWidth: 1.2,
+                  borderRadius: 6,
+                  barThickness: 20
+                }]
+              },
+              options: {
+                responsive:true, maintainAspectRatio:false,
+                plugins:{ legend:{ display:false }, tooltip:{ padding:8 } },
+                scales:{ y:{ beginAtZero:true, ticks:{ precision:0 } } }
+              }
+            });
+          })
+          .catch(err => {
+            console.error('Error loading grades:', err);
+            document.getElementById('gradeEmptyMsg').style.display='block';
+          });
+      })();
+
+      // Ensure charts render after layout computed
+      window.addEventListener('load', () => setTimeout(renderDifficulty, 120));
+
+      function goHome(){
+        const role = "{{ session['user']['role'] }}";
+        if (role === "student") window.location.href = "/student_dashboard";
+        else if (role === "instructor") window.location.href = "/instructor_dashboard";
+        else if (role === "admin") window.location.href = "/admin_dashboard";
+        else window.location.href = "/";
+      }
+    </script>
+  </body>
 </html>

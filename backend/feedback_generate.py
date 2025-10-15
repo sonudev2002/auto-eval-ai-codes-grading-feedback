@@ -1,14 +1,34 @@
+"""
+feedback_generator.py
+---------------------
+Automated feedback generation system for code submissions.
+
+This module evaluates a student's code by combining:
+- Execution results (success, runtime errors, etc.)
+- Code quality metrics (complexity, syntax, length)
+- Plagiarism analysis (similarity score and matched IDs)
+
+Based on configuration, it:
+1. Uses OpenAI’s ChatGPT API (GPT-4) to generate personalized feedback, OR
+2. Falls back to a rule-based static feedback system when the API is unavailable.
+
+Outputs clear, constructive, and encouraging feedback messages.
+
+Public API:
+    generate_feedback(source_code, execution, quality, plagiarism)
+"""
+
 import logging
 import traceback
 from typing import Dict, Any
 from openai import OpenAI
 import sys, os
 
-# Append parent directory to system path for module imports
+# Add project root to sys.path for proper imports
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from config import Config
 
-# Configure logger for feedback generation process
+# ---------------- Logger Setup ----------------
 logger = logging.getLogger("feedback")
 logger.setLevel(logging.INFO)
 if not logger.handlers:
@@ -21,21 +41,20 @@ if not logger.handlers:
 
 class FeedbackGenerator:
     """
-    Handles automated generation of feedback for code submissions.
-    Can use ChatGPT API or fallback to a rule-based feedback system.
+    Generates automated feedback for code submissions.
+    Uses ChatGPT API if available, else falls back to rule-based logic.
     """
 
     def __init__(self, use_chatgpt: bool = True):
         self.use_chatgpt = use_chatgpt
         self.client: OpenAI | None = None
 
-        # Check and initialize OpenAI API client
+        # Validate OpenAI API key
         if self.use_chatgpt and not Config.OPENAI_API_KEY:
-            logger.warning(
-                "OPENAI_API_KEY not found. Falling back to rule-based feedback."
-            )
+            logger.warning("OPENAI_API_KEY not found. Using rule-based feedback.")
             self.use_chatgpt = False
 
+        # Initialize OpenAI client if API key is available
         if self.use_chatgpt:
             try:
                 self.client = OpenAI(api_key=Config.OPENAI_API_KEY)
@@ -43,6 +62,7 @@ class FeedbackGenerator:
                 logger.error(f"Failed to initialize OpenAI client: {e}")
                 self.use_chatgpt = False
 
+    # ---------------- Prompt Builder ----------------
     def _format_prompt(
         self,
         execution: Dict[str, Any],
@@ -50,9 +70,7 @@ class FeedbackGenerator:
         plagiarism: Dict[str, Any],
         source_code: str,
     ) -> str:
-        """
-        Formats input data into a structured prompt for ChatGPT feedback generation.
-        """
+        """Format code metrics and results into a ChatGPT-ready feedback prompt."""
         return f"""
 You are a teaching assistant providing constructive feedback on student code.
 
@@ -75,18 +93,16 @@ Plagiarism:
 Student Code:
 {source_code}
 
-Provide concise, encouraging feedback covering:
-1. Strengths (correctness, clarity, creativity)
-2. Weaknesses (syntax, logic, performance)
+Provide concise feedback including:
+1. Strengths (correctness, clarity)
+2. Weaknesses (logic, performance)
 3. Suggestions for improvement
-4. If plagiarism is high, remind about originality.
+4. Reminder if plagiarism is high.
 """.strip()
 
+    # ---------------- ChatGPT Feedback ----------------
     def _chatgpt_feedback(self, prompt: str) -> str | None:
-        """
-        Generates feedback using the ChatGPT API.
-        Returns None if an API error occurs.
-        """
+        """Generate feedback using ChatGPT API."""
         if not self.client:
             return None
 
@@ -109,18 +125,17 @@ Provide concise, encouraging feedback covering:
             logger.debug(traceback.format_exc())
             return None
 
+    # ---------------- Rule-Based Feedback ----------------
     def _rule_based_feedback(
         self,
         execution: Dict[str, Any],
         quality: Dict[str, Any],
         plagiarism: Dict[str, Any],
     ) -> str:
-        """
-        Generates simple feedback based on predefined rules when ChatGPT is unavailable.
-        """
+        """Fallback static feedback when ChatGPT is disabled or unavailable."""
         feedback_parts = []
 
-        # Execution analysis
+        # Execution results
         if execution.get("status") != "success":
             feedback_parts.append(
                 f"Code execution failed: {execution.get('error', 'Unknown error')}."
@@ -128,38 +143,39 @@ Provide concise, encouraging feedback covering:
         else:
             feedback_parts.append("Code executed successfully.")
 
-        # Syntax validation
+        # Syntax check
         if quality.get("syntax_error"):
-            feedback_parts.append(f"Syntax issue detected: {quality['syntax_error']}.")
+            feedback_parts.append(f"Syntax issue: {quality['syntax_error']}.")
         else:
             feedback_parts.append("No syntax errors found.")
 
-        # Complexity evaluation
+        # Complexity analysis
         cyclomatic = quality.get("cyclomatic")
         if cyclomatic:
             if cyclomatic > 10:
                 feedback_parts.append(
-                    "Code complexity is high; consider breaking functions into smaller units."
+                    "Code complexity is high; consider refactoring into smaller functions."
                 )
             else:
                 feedback_parts.append(
-                    f"Cyclomatic complexity is {cyclomatic} ({quality.get('cyclomatic_rank')})."
+                    f"Cyclomatic complexity: {cyclomatic} ({quality.get('cyclomatic_rank')})."
                 )
 
-        # Code length assessment
+        # Code length
         if quality.get("length", 0) > 100:
             feedback_parts.append(
-                "Code is lengthy; try modularizing into smaller reusable parts."
+                "Code is lengthy; consider breaking into smaller modules."
             )
 
-        # Plagiarism detection
+        # Plagiarism score
         if plagiarism.get("score", 0) > 0.7:
             feedback_parts.append(
-                "High similarity detected; ensure your submission is original."
+                "High similarity detected; ensure originality in your submission."
             )
 
         return " ".join(feedback_parts)
 
+    # ---------------- Feedback Generator ----------------
     def generate_feedback(
         self,
         execution: Dict[str, Any],
@@ -167,16 +183,14 @@ Provide concise, encouraging feedback covering:
         plagiarism: Dict[str, Any],
         source_code: str,
     ) -> str:
-        """
-        Main method to generate feedback using ChatGPT or fallback rule-based logic.
-        """
+        """Main feedback generator: ChatGPT first, fallback to rule-based."""
         if self.use_chatgpt:
             prompt = self._format_prompt(execution, quality, plagiarism, source_code)
             feedback_text = self._chatgpt_feedback(prompt)
             if feedback_text:
                 return feedback_text
 
-        # Default to rule-based feedback if ChatGPT unavailable or fails
+        # Fallback if ChatGPT fails or disabled
         return self._rule_based_feedback(execution, quality, plagiarism)
 
 
@@ -187,8 +201,6 @@ def generate_feedback(
     quality: Dict[str, Any],
     plagiarism: Dict[str, Any],
 ) -> str:
-    """
-    Public API function to generate feedback for code submissions.
-    """
+    """Public function to generate code feedback."""
     generator = FeedbackGenerator()
     return generator.generate_feedback(execution, quality, plagiarism, source_code)

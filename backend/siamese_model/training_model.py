@@ -1,35 +1,37 @@
 """
 training_model.py
 -----------------
-Robust training module for siamese plagiarism detector.
+Robust training module for a Siamese Plagiarism Detector using CodeBERT.
 
 Drop into:
-D:\mca_final_project\backend\siamese_model\training_model.py
+    D:\mca_final_project\backend\siamese_model\training_model.py
 
-Features:
+Key Features:
 - Preprocess Java files (clean comments / normalize whitespace).
-- Build pairs dataset (positive / negative / cross-case negatives).
-- Precompute CodeBERT embeddings (batched, cached).
-- Siamese model with contrastive loss and 5-fold CV training.
-- Threshold tuning and checkpoint saving (model + threshold).
-- CLI entrypoints for: preprocess, build_pairs, embed, train, tune
-- Defensive checks, logging, GPU handling, reproducibility.
+- Build positive/negative/cross-case code pairs for contrastive learning.
+- Compute and cache CodeBERT embeddings efficiently in batches.
+- Train a Siamese network with contrastive loss and 5-fold CV.
+- Tune thresholds and save best-performing checkpoints.
+- CLI entrypoints for: preprocess, build_pairs, embed, train, tune.
+- Defensive coding with logging, reproducibility, and GPU handling.
 """
 
+# ============================================================
+# 🧩 Imports
+# ============================================================
 import os
 import re
-import math
 import json
+import math
 import logging
+import random
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional, Any
-import random
 
 import torch
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-
 from torch import nn
 from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
@@ -38,29 +40,37 @@ from sklearn.model_selection import KFold, train_test_split
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from transformers import RobertaTokenizer, RobertaModel, logging as hf_logging
 
-# Reduce transformers verbosity
+# Reduce Hugging Face transformers logging noise
 hf_logging.set_verbosity_error()
 
-# ----------------------------
-# Configuration (edit as needed)
-# ----------------------------
+
+# ============================================================
+# ⚙️ Configuration (Edit as needed)
+# ============================================================
 BASE_DIR = Path(__file__).resolve().parent
+
 DEFAULTS = {
+    # Checkpoint path (can be overridden by environment variable)
     "checkpoint": Path(
         os.getenv(
             "SIAMESE_CHECKPOINT",
             BASE_DIR / "siamese_model" / "siamese_plagiarism_best.pth",
         )
     ),
+    # Pretrained model identifier for CodeBERT
     "codebert_model": os.getenv("CODEBERT_MODEL", "microsoft/codebert-base"),
+    # Tokenization max length
     "max_length": int(os.getenv("MAX_LENGTH", 512)),
+    # Automatically select CUDA if available
     "device": torch.device("cuda" if torch.cuda.is_available() else "cpu"),
+    # Random seed for reproducibility (default value)
+    "seed": int(os.getenv("SEED", 42)),
 }
 
 
-# ----------------------------
-# Logging and seeding
-# ----------------------------
+# ============================================================
+# 🧭 Logging Setup and Random Seeding
+# ============================================================
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
 )
@@ -68,6 +78,10 @@ logger = logging.getLogger("siamese_training")
 
 
 def set_seed(seed: int):
+    """
+    Set random seed across Python, NumPy, and PyTorch
+    to ensure reproducible training runs.
+    """
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -75,25 +89,48 @@ def set_seed(seed: int):
         torch.cuda.manual_seed_all(seed)
 
 
+# Initialize reproducibility
 set_seed(DEFAULTS["seed"])
 
 
-# ----------------------------
-# Utilities
-# ----------------------------
+# ============================================================
+# 🛠️ Utility Functions
+# ============================================================
 def safe_mkdir(path: Path):
+    """
+    Ensure the parent directories exist for the given path.
+    Safe for concurrent calls.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
 
 
 def clean_java_code(code: str) -> str:
+    """
+    Clean and normalize raw Java source code.
+
+    Steps:
+    - Remove single-line (// ...) and multi-line (/* ... */) comments.
+    - Normalize whitespace to a single space.
+    - Strip leading/trailing spaces.
+
+    Args:
+        code (str): Raw Java source code.
+
+    Returns:
+        str: Cleaned and normalized Java code.
+    """
     if not isinstance(code, str):
         return ""
-    # Remove single-line comments //
+
+    # Remove single-line comments (// comment)
     code = re.sub(r"//.*", "", code)
-    # Remove multi-line comments /* ... */
+
+    # Remove multi-line comments (/* comment block */)
     code = re.sub(r"/\*[\s\S]*?\*/", "", code)
+
     # Normalize whitespace
     code = re.sub(r"\s+", " ", code)
+
     return code.strip()
 
 

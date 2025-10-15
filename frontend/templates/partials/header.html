@@ -7,7 +7,10 @@
 
   <!-- Font + Icons -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" 
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" 
+        integrity="sha512-bxGtsytj1b2tGhZxvAodXnYFfApQq5a4nTzv1bYZm9BquK9sBvVdyXlFbAVzSbFv0HTB6O9w8XeGxnhcQkz4FQ==" 
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
 
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -17,9 +20,12 @@
       width: 100%;
       background: linear-gradient(90deg, #4B0082, #00BFA6);
       color: #fff;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
       position: relative;
       z-index: 1000;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
     }
 
     .header-container {
@@ -38,6 +44,11 @@
       gap: 10px;
       flex: 1 1 220px;
       cursor: pointer;
+      transition: transform 0.3s ease;
+    }
+
+    .logo-section:hover img {
+      transform: scale(1.05);
     }
 
     .logo-section img {
@@ -45,6 +56,7 @@
       width: 40px;
       border-radius: 50%;
       object-fit: cover;
+      transition: transform 0.3s ease;
     }
 
     .logo-title {
@@ -67,7 +79,7 @@
       flex: 2 1 400px;
       height: 70px;
       overflow: hidden;
-      border-radius: 8px;
+      border-radius: 10px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.15);
     }
 
@@ -75,7 +87,12 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      border-radius: 8px;
+      border-radius: 10px;
+      transition: transform 0.6s ease;
+    }
+
+    .banner img:hover {
+      transform: scale(1.03);
     }
 
     /* --- Right Section --- */
@@ -93,6 +110,12 @@
       border-radius: 50%;
       border: 2px solid #fff;
       object-fit: cover;
+      transition: 0.3s ease;
+    }
+
+    .profile-pic:hover {
+      box-shadow: 0 0 0 2px #fff, 0 0 6px rgba(255,255,255,0.4);
+      transform: scale(1.05);
     }
 
     .user-name {
@@ -114,7 +137,11 @@
       height: 3px;
       background: #fff;
       border-radius: 2px;
-      transition: 0.3s;
+      transition: background 0.3s, transform 0.3s;
+    }
+
+    .hamburger:hover span {
+      background: #e5e5e5;
     }
 
     /* --- Dropdown Menu --- */
@@ -125,18 +152,22 @@
       background-color: #fff;
       border: 1px solid #ddd;
       border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.15);
       padding: 12px 16px;
-      display: none;
+      display: flex;
       flex-direction: column;
       gap: 10px;
       min-width: 180px;
-      animation: fadeIn 0.2s ease;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-10px);
+      transition: all 0.25s ease;
     }
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-5px); }
-      to { opacity: 1; transform: translateY(0); }
+    .menu.show {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
     }
 
     .menu a {
@@ -146,12 +177,16 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      transition: 0.2s;
+      transition: color 0.2s, transform 0.2s;
     }
 
     .menu a:hover {
       color: #4B0082;
       transform: translateX(3px);
+    }
+
+    .menu a:hover i {
+      transform: scale(1.1);
     }
 
     @media (max-width: 768px) {
@@ -218,25 +253,20 @@
 
     <!-- ✅ Dropdown Menu -->
     <div id="menu" class="menu">
-  <a href="javascript:void(0)" onclick="goHome()"><i class="fas fa-home"></i> Home</a>
-
-  <a href="{{ url_for('profile.profile', user_id=session['user']['user_id']) }}?role={{ session['user']['role'] }}">
-    <i class="fas fa-user"></i> Profile
-  </a>
-
-  {% if session['user']['role'] in ['student', 'instructor'] %}
-  <a href="{{ url_for('performance_history', user_id=session['user']['user_id']) }}">
-    <i class="fas fa-chart-line"></i> Performance History
-  </a>
-  {% endif %}
-
-  <a href="{{ url_for('report_issue_form', page='profile', user_id=session['user']['user_id']) }}">
-    <i class="fas fa-bug"></i> Report Issue
-  </a>
-
-  <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
-</div>
-
+      <a href="javascript:void(0)" onclick="goHome()"><i class="fas fa-home"></i> Home</a>
+      <a href="{{ url_for('profile.profile', user_id=session['user']['user_id']) }}?role={{ session['user']['role'] }}">
+        <i class="fas fa-user"></i> Profile
+      </a>
+      {% if session['user']['role'] in ['student', 'instructor'] %}
+      <a href="{{ url_for('performance_history', user_id=session['user']['user_id']) }}">
+        <i class="fas fa-chart-line"></i> Performance History
+      </a>
+      {% endif %}
+      <a href="{{ url_for('report_issue_form', page='profile', user_id=session['user']['user_id']) }}">
+        <i class="fas fa-bug"></i> Report Issue
+      </a>
+      <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+    </div>
 
   </div>
 </header>
@@ -244,7 +274,7 @@
 <script>
   function toggleMenu() {
     const menu = document.getElementById('menu');
-    menu.style.display = (menu.style.display === 'flex') ? 'none' : 'flex';
+    menu.classList.toggle('show');
   }
 
   function goHome() {
@@ -260,7 +290,7 @@
     const menu = document.getElementById('menu');
     const hamburger = document.querySelector('.hamburger');
     if (!menu.contains(e.target) && !hamburger.contains(e.target)) {
-      menu.style.display = 'none';
+      menu.classList.remove('show');
     }
   });
 </script>

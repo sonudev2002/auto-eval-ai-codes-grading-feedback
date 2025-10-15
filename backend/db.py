@@ -1,10 +1,10 @@
 """
-db.py — Fullproof Database Connection Handler
----------------------------------------------
-✅ Works on both Local (XAMPP, WAMP, MySQL Workbench) and Render Cloud.
-✅ Automatically detects Render and enables SSL only in cloud.
-✅ Handles timeouts, wrong credentials, and SSL version errors gracefully.
-✅ Prints clear connection logs for debugging.
+db.py — Robust MySQL Connection Handler
+---------------------------------------
+✅ Supports both Local (XAMPP/WAMP/MySQL Workbench) and Cloud (Render/Railway).
+✅ Automatically detects cloud environments and enables SSL as needed.
+✅ Handles timeouts, credential errors, and SSL issues gracefully.
+✅ Provides clear connection logs for debugging.
 """
 
 import os
@@ -12,32 +12,32 @@ import mysql.connector
 from mysql.connector import Error
 from dotenv import load_dotenv
 
-# Load local .env file if present (ignored in Render cloud)
+# Load environment variables from .env file (ignored in Render)
 load_dotenv()
 
 
 def get_connection():
     """
-    Returns a secure, auto-configured MySQL connection.
-    - SSL is disabled for local environments (localhost, 127.0.0.1)
-    - SSL is enabled automatically for Render, Railway, or any remote host
+    Establish and return a secure, auto-configured MySQL connection.
+    - Disables SSL for localhost/127.0.0.1
+    - Enables SSL automatically for Render, Railway, or remote hosts
     """
-
+    # Load database credentials with fallbacks
     host = os.getenv("MYSQLHOST", "localhost")
     user = os.getenv("MYSQLUSER", "root")
     password = os.getenv("MYSQLPASSWORD", "")
     database = os.getenv("MYSQLDATABASE", "mca_project")
     port = int(os.getenv("MYSQLPORT", 3306))
 
-    # Detect environment
+    # Determine environment type
     render_env = bool(os.getenv("RENDER")) or "render.com" in host
     railway_env = "railway" in host
-    use_ssl_env = os.getenv("USE_SSL", "auto").lower()  # manual override if needed
+    ssl_pref = os.getenv("USE_SSL", "auto").lower()  # optional manual override
 
-    # SSL decision logic
-    if use_ssl_env == "true":
+    # Decide whether to use SSL
+    if ssl_pref == "true":
         use_ssl = True
-    elif use_ssl_env == "false":
+    elif ssl_pref == "false":
         use_ssl = False
     else:
         use_ssl = (
@@ -45,7 +45,7 @@ def get_connection():
         )
 
     try:
-        # Establish connection
+        # Create MySQL connection
         connection = mysql.connector.connect(
             host=host,
             user=user,
@@ -65,24 +65,21 @@ def get_connection():
             return connection
 
     except Error as e:
-        # Categorize and print meaningful messages
-        error_msg = str(e).lower()
-
-        if "access denied" in error_msg:
+        # Handle known MySQL errors clearly
+        msg = str(e).lower()
+        if "access denied" in msg:
             print("❌ [DB ERROR] Access denied — check MYSQLUSER or MYSQLPASSWORD.")
-        elif "unknown database" in error_msg:
+        elif "unknown database" in msg:
             print(f"❌ [DB ERROR] Database '{database}' does not exist.")
-        elif "ssl routines" in error_msg:
+        elif "ssl routines" in msg:
             print("❌ [DB ERROR] SSL handshake failed — likely wrong SSL mode.")
             print("💡 Tip: set USE_SSL=false in your .env for local testing.")
-        elif "can't connect" in error_msg or "refused" in error_msg:
+        elif any(err in msg for err in ["can't connect", "refused"]):
             print("❌ [DB ERROR] Cannot connect to MySQL server — verify host/port.")
-        elif "timeout" in error_msg:
+        elif "timeout" in msg:
             print("⚠️ [DB WARNING] Connection timed out — server not responding.")
         else:
             print(f"❌ [DB ERROR] MySQL connection failed: {e}")
-
-        # Reraise exception for higher-level handling
         raise
 
     except Exception as e:
@@ -90,7 +87,7 @@ def get_connection():
         raise
 
 
-# Optional standalone test for developers
+# Standalone test utility
 if __name__ == "__main__":
     print("🔍 Testing MySQL connection...")
     try:

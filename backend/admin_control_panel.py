@@ -1,19 +1,38 @@
+"""
+admin_control_panel.py
+----------------------
+Provides backend logic for the admin dashboard and control panel.
+Includes:
+- User management and deletion with audit tracking
+- Login logs, notifications, and reported issue retrieval
+- Broadcast and system-wide message handling
+- Role-based data visibility for admin users
+"""
+
 from backend.db import get_connection
 
 
 class AdminControlPanel:
-    """Handles fetching data for Admin Dashboard (Login Logs, Notifications, Reported Issues)."""
+    """Provides data access and management functions for admin operations."""
 
+    # ============================================================
+    # 🔍 User Management Utilities
+    # ============================================================
     @staticmethod
     def get_user_id_by_email(email: str) -> int | None:
+        """Return user_id for a given email, or None if not found."""
         conn = get_connection()
         with conn.cursor(dictionary=True) as cursor:
             cursor.execute("SELECT user_id FROM user_profile WHERE email=%s", (email,))
             row = cursor.fetchone()
             return row["user_id"] if row else None
 
+    # ============================================================
+    # 🕓 Login & Notification Logs
+    # ============================================================
     @staticmethod
     def get_login_logs(limit: int = 20):
+        """Fetch recent login activity for all users."""
         conn = get_connection()
         with conn.cursor(dictionary=True) as cursor:
             cursor.execute(
@@ -30,6 +49,7 @@ class AdminControlPanel:
 
     @staticmethod
     def get_notifications(limit: int = 20):
+        """Fetch latest system notifications with user info."""
         conn = get_connection()
         with conn.cursor(dictionary=True) as cursor:
             cursor.execute(
@@ -46,6 +66,7 @@ class AdminControlPanel:
 
     @staticmethod
     def get_broadcasts(limit: int = 20):
+        """Fetch recent broadcast messages."""
         conn = get_connection()
         with conn.cursor(dictionary=True) as cursor:
             cursor.execute(
@@ -59,15 +80,18 @@ class AdminControlPanel:
             )
             return cursor.fetchall()
 
+    # ============================================================
+    # ⚠️ Reported Issues
+    # ============================================================
     @staticmethod
     def get_reported_issues(limit: int = 50, status_group: str | None = None):
         """
-        Fetch reported issues.
-        status_group options:
-          - None      → All issues (default)
-          - "open"    → Only OPEN issues
-          - "other"   → Not OPEN and not resolved/closed/rejected
-          - "closed"  → RESOLVED / CLOSED / REJECTED
+        Fetch reported issues filtered by status.
+        status_group:
+            - None → All issues
+            - "open" → Only OPEN issues
+            - "other" → In progress / pending
+            - "closed" → RESOLVED / CLOSED / REJECTED
         """
         conn = get_connection()
         with conn.cursor(dictionary=True) as cursor:
@@ -95,7 +119,7 @@ class AdminControlPanel:
 
     @staticmethod
     def get_notifications_by_user(user_id: int, limit: int = 50):
-        """Fetch notifications for a specific user."""
+        """Fetch all notifications for a specific user."""
         conn = get_connection()
         with conn.cursor(dictionary=True) as cursor:
             cursor.execute(
@@ -113,7 +137,7 @@ class AdminControlPanel:
 
     @staticmethod
     def get_reported_issues_by_user(user_id: int, limit: int = 50):
-        """Fetch reported issues for a specific user."""
+        """Fetch all reported issues submitted by a specific user."""
         conn = get_connection()
         with conn.cursor(dictionary=True) as cursor:
             cursor.execute(
@@ -129,26 +153,29 @@ class AdminControlPanel:
             )
             return cursor.fetchall()
 
+    # ============================================================
+    # 🗑️ User Deletion (Admin Only)
+    # ============================================================
     @staticmethod
     def delete_user_and_data(
         user_id: int, acting_admin_id: int = 1
     ) -> tuple[bool, str]:
         """
-        Safely delete a user:
-         - Prevent deleting primary admin (user_id == acting_admin_id)
-         - If the user is an instructor, reassign assignments to acting_admin_id
-         - Insert one audit log record
-         - Delete the user row (DB ON DELETE CASCADE should remove dependent rows)
-        Returns (success, message)
+        Delete user and dependent data safely.
+        Rules:
+          - Prevent self-deletion of main admin
+          - Reassign instructor assignments to acting admin
+          - Log action in admin_audit_log (if exists)
+          - Remove orphaned address rows
+        Returns: (success, message)
         """
-        # Protect main admin
         if int(user_id) == int(acting_admin_id):
             return False, "Cannot delete primary admin user"
 
         conn = get_connection()
         try:
             with conn.cursor() as cursor:
-                # 1. Verify existence and role
+                # 1️⃣ Check user existence and role
                 cursor.execute(
                     "SELECT role, address_id FROM user_profile WHERE user_id = %s",
                     (user_id,),
@@ -157,31 +184,28 @@ class AdminControlPanel:
                 if not row:
                     return False, "User not found"
 
-                role = (
-                    row[0] if isinstance(row, (list, tuple)) else row.get("role")
-                )  # handle dict/tuple
-                address_id = None
-                if isinstance(row, (list, tuple)):
-                    # if cursor returns tuple, guess address_id position (fallback)
-                    try:
-                        address_id = row[1]
-                    except Exception:
-                        address_id = None
-                else:
-                    address_id = row.get("address_id")
+                # Support tuple or dict cursor output
+                role = row[0] if isinstance(row, (list, tuple)) else row.get("role")
+                address_id = (
+                    row[1]
+                    if isinstance(row, (list, tuple))
+                    else row.get("address_id", None)
+                )
 
-                # 2. If instructor, reassign their assignments to admin (acting_admin_id)
+                # 2️⃣ If instructor → reassign their assignments
                 if str(role).lower() == "instructor":
                     cursor.execute(
                         "UPDATE assignment SET instructor_id = %s WHERE instructor_id = %s",
                         (acting_admin_id, user_id),
                     )
 
-                # 3. Audit log (create table admin_audit_log if not exists)
+                # 3️⃣ Log deletion in admin_audit_log
                 try:
                     cursor.execute(
-                        "INSERT INTO admin_audit_log (admin_id, action, target_user_id, details, created_at) "
-                        "VALUES (%s, %s, %s, %s, NOW())",
+                        """
+                        INSERT INTO admin_audit_log (admin_id, action, target_user_id, details, created_at)
+                        VALUES (%s, %s, %s, %s, NOW())
+                        """,
                         (
                             acting_admin_id,
                             "delete_user",
@@ -190,15 +214,15 @@ class AdminControlPanel:
                         ),
                     )
                 except Exception:
-                    # swallow — table might not exist; we don't want to block deletion
+                    # Table may not exist — safe to ignore
                     pass
 
-                # 4. Delete user (let DB cascades remove dependent rows)
+                # 4️⃣ Delete user (cascade removes related data)
                 cursor.execute(
                     "DELETE FROM user_profile WHERE user_id = %s", (user_id,)
                 )
 
-                # 5. (optional) remove address row if orphaned
+                # 5️⃣ Delete orphaned address if no references
                 if address_id:
                     try:
                         cursor.execute(
@@ -206,15 +230,10 @@ class AdminControlPanel:
                             (address_id,),
                         )
                         cnt = cursor.fetchone()
-                        # supports tuple/dict
                         count_val = (
                             cnt[0]
                             if isinstance(cnt, (list, tuple))
-                            else (
-                                cnt.get("COUNT(*)")
-                                if isinstance(cnt, dict)
-                                else list(cnt.values())[0]
-                            )
+                            else next(iter(cnt.values()))
                         )
                         if int(count_val) == 0:
                             cursor.execute(
@@ -225,7 +244,7 @@ class AdminControlPanel:
                         pass
 
                 conn.commit()
-                return True, "User deleted and related data cleaned up"
+                return True, "User deleted successfully and related data cleaned up"
         except Exception as e:
             try:
                 conn.rollback()

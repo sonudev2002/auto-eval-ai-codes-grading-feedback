@@ -1,4 +1,12 @@
-# backend/notification_system.py
+"""
+Notification system module.
+
+Responsibilities:
+- DB repository helpers for users and notifications
+- Delivery channels: In-app, Email (Brevo + SMTP fallback), SMS
+- High-level NotificationSystem orchestrator for sending and broadcasting
+"""
+
 import logging
 import time
 import os
@@ -6,11 +14,7 @@ import textwrap
 from typing import List, Iterable, Optional, Set, Union, Dict, Any, Tuple, cast
 from concurrent.futures import ThreadPoolExecutor
 import datetime
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 import requests
-
 from backend.db import get_connection
 from config import Config
 
@@ -818,3 +822,20 @@ class NotificationSystem:
             self.repo.mark_as_read(notification_id)
         except Exception:
             logger.exception("mark_notification_read failed for %s", notification_id)
+
+    def mark_all_as_read(self, user_id: int):
+        """Mark all notifications of a user as read."""
+        conn = get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE notification SET status='read' WHERE user_id=%s AND status='unread'",
+                (user_id,),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def mark_all_notifications_read(self, user_id: int):
+        """Public API to mark all notifications as read."""
+        self.repo.mark_all_as_read(user_id)

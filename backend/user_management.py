@@ -1,64 +1,74 @@
+"""
+user_management.py
+------------------
+Handles all user-related backend operations:
+- Registration, authentication, and OTP verification
+- Profile creation, update, and role-specific management
+- Media uploads (profile pictures)
+- Timezone consistency and DB commit safety
+"""
+
+# ============================================================
+# 🧩 Imports and Setup
+# ============================================================
 import os
 import uuid
 import smtplib
 import requests
 import random
 import logging
+import traceback
+from decimal import Decimal
 from contextlib import contextmanager
+from datetime import date, datetime, time as datetime_time, timedelta
+from typing import Any, Dict, Optional, TypedDict
 
 from flask import request, session, jsonify, redirect, url_for, current_app, Response
 from email.message import EmailMessage
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-
-import time as systime  # system time for OTP expiry (unix timestamps)
-import time  # used for time.tzset()
-from datetime import date, datetime, time as datetime_time, timedelta
-
-# timezone support
+from user_agents import parse
 import pytz
+import time as systime
+import time
 
 from backend.db import get_connection
-from user_agents import parse
 from config import Config
-import traceback
-from typing import Any, Dict, Optional, TypedDict
-from decimal import Decimal
 from analytics import DBConnection, normalize_row
 import cloudinary
 import cloudinary.uploader
 
-# -------------------- setup logging --------------------
+# ============================================================
+# 🧾 Logging Configuration
+# ============================================================
 logger = logging.getLogger(__name__)
 if not logger.handlers:
-    # simple console handler if not already configured by app
     handler = logging.StreamHandler()
-    formatter = logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
-    handler.setFormatter(formatter)
+    handler.setFormatter(
+        logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
+    )
     logger.addHandler(handler)
-    logger.setLevel(logging.INFO)
+logger.setLevel(logging.INFO)
 
-# -------------------- timezone (IST) --------------------
-# Prefer DB NOW() for SQL timestamps, but set process TZ for logging consistency.
+# ============================================================
+# 🌍 Timezone Setup (IST)
+# ============================================================
+# Prefer DB-side timestamps, but align Python logs to IST
 try:
     os.environ["TZ"] = "Asia/Kolkata"
-    time.tzset()  # may not exist on Windows; wrapped in try/except
+    time.tzset()  # may fail on Windows
     IST = pytz.timezone("Asia/Kolkata")
-    logger.info("Timezone set to Asia/Kolkata for process")
+    logger.info("Timezone set to Asia/Kolkata for process.")
 except Exception:
-    # On Windows, time.tzset may not be available; keep using pytz where needed.
     IST = pytz.timezone("Asia/Kolkata")
-    logger.warning(
-        "Could not call time.tzset(); using pytz aware timestamps where required"
-    )
+    logger.warning("time.tzset() unavailable; using pytz for IST localization.")
 
 
-# -------------------- DB helper --------------------
+# ============================================================
+# 🧩 Database Helpers
+# ============================================================
 def safe_commit(conn):
-    """
-    Commit a transaction, with rollback on error.
-    Use within try/except blocks where conn exists.
-    """
+    """Commit transaction safely; rollback if commit fails."""
     try:
         conn.commit()
     except Exception as e:
@@ -70,15 +80,21 @@ def safe_commit(conn):
         raise
 
 
-# Keep upload folder constant
+# ============================================================
+# 📁 Upload Configuration
+# ============================================================
 UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
 MAX_PIC_BYTES = int(os.getenv("MAX_PIC_BYTES", 2 * 1024 * 1024))  # 2 MB default
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
 
 
+# ============================================================
+# 🔄 Data Normalization
+# ============================================================
 def normalize_row(row: dict | None) -> dict | None:
-    """Convert DB row values into JSON/template-safe types."""
+    """Convert DB row values into JSON-safe, serializable types."""
     if row is None:
         return None
 
@@ -87,10 +103,9 @@ def normalize_row(row: dict | None) -> dict | None:
         if value is None:
             clean[key] = None
         elif isinstance(value, Decimal):
-            # Convert Decimal to float
             clean[key] = float(value)
         elif isinstance(value, datetime):
-            # MySQL DATETIME is naive; localize to IST (makes it timezone-aware)
+            # Localize naive MySQL DATETIME to IST
             if value.tzinfo is None:
                 value = IST.localize(value)
             clean[key] = value.isoformat()
@@ -105,16 +120,27 @@ def normalize_row(row: dict | None) -> dict | None:
     return clean
 
 
+# ============================================================
+# ⏰ Time Utilities
+# ============================================================
 def now_ist() -> datetime:
-    """Return timezone-aware IST datetime for logging or python-side use."""
+    """Return timezone-aware IST datetime."""
     return datetime.now(IST)
 
 
-USERS = []  # For checking uniqueness
-OTP_STORE = {}
+# ============================================================
+# 👥 Global Structures (in-memory for validation/testing)
+# ============================================================
+USERS: list = []  # used for temporary uniqueness checks
+OTP_STORE: dict = {}  # in-memory OTP storage (fallback, not for prod)
 
 
+# ============================================================
+# 🧩 Type Definitions
+# ============================================================
 class UserRow(TypedDict):
+    """Typed structure for a user row from user_profile."""
+
     user_id: int
     email: str
     password: str
@@ -125,11 +151,17 @@ class UserRow(TypedDict):
     profile_picture_path: Optional[str]
 
 
+# ============================================================
+# 🧾 File Validation
+# ============================================================
 def allowed_file(filename: str) -> bool:
+    """Check if uploaded filename has an allowed extension."""
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+# 📧 Email, OTP, and User Authentication Functions
 def is_email_registered(email):
+    """Check if an email already exists in the user_profile table."""
     email = (email or "").strip().lower()
     conn = get_connection()
     print("user management inside is_email_registerd")
@@ -144,13 +176,13 @@ def is_email_registered(email):
         conn.close()
 
 
+# -------------------- Profile Picture Handling --------------------
 def save_profile_picture(file) -> str | None:
     """
-    Saves uploaded profile picture.
+    Save uploaded profile picture.
     Priority:
-     1) Cloudinary (if configured)
-     2) Local uploads folder (fallback)
-    Returns stored URL/path or None on failure.
+    1. Upload to Cloudinary (if enabled)
+    2. Save locally under /uploads as fallback
     """
     if not file or not getattr(file, "filename", ""):
         return None
@@ -159,7 +191,7 @@ def save_profile_picture(file) -> str | None:
     if not allowed_file(filename):
         return None
 
-    # Check file size
+    # Validate file size
     try:
         file.stream.seek(0, os.SEEK_END)
         size = file.stream.tell()
@@ -200,12 +232,14 @@ def save_profile_picture(file) -> str | None:
         return None
 
 
+# -------------------- OTP Generation & Delivery --------------------
 def generate_otp():
     print("user management inside generate_otp()")
     return f"{random.randint(100000, 999999)}"
 
 
 def send_email_otp(to_email: str, otp: str) -> bool:
+    """Send OTP to user via email using SMTP."""
     print("user management inside send email otp")
     smtp_server = os.getenv("EMAIL_SMTP_SERVER", "smtp-relay.brevo.com")
     smtp_port = int(os.getenv("EMAIL_SMTP_PORT", 587))
@@ -235,6 +269,7 @@ def send_email_otp(to_email: str, otp: str) -> bool:
 
 
 def send_sms_otp(mobile: str, otp: str) -> bool:
+    """Send OTP to user via SMS using Fast2SMS API."""
     print("user management inside send sms otp")
     url = os.getenv("FAST2SMS_URL", "https://www.fast2sms.com/dev/bulkV2")
     payload = {
@@ -257,6 +292,7 @@ def send_sms_otp(mobile: str, otp: str) -> bool:
 
 
 def send_otp_email():
+    """Send OTP to email only (used during password reset)."""
     print("user management inside send_otp_email")
     data = request.get_json()
     email = data.get("email")
@@ -280,15 +316,14 @@ def send_otp_email():
 
 
 def send_otp():
+    """Send OTP to both email and mobile (during registration)."""
+
     data = request.get_json()
     email = data.get("email")
     mobile = data.get("mobile")
 
     if not email or not mobile:
         return jsonify({"success": False, "message": "Email and mobile required"}), 400
-
-    # if not is_email_registered(email):
-    #     return jsonify({"success": False, "message": "Email already registered"}), 409
 
     otp = generate_otp()
     OTP_STORE[email] = {
@@ -308,6 +343,7 @@ def send_otp():
 
 
 def verify_otp():
+    """Validate received OTP against stored one."""
     print("user management inside verify_otp()")
     data = request.get_json()
     email = data.get("email")
@@ -326,7 +362,9 @@ def verify_otp():
     return jsonify({"valid": True, "message": "OTP verified"}), 200
 
 
+# -------------------- Registration --------------------
 def register_user():
+    """Handle new user registration and profile creation."""
     print("user management inside register_userU()")
     data = request.form
     email = data.get("email")
@@ -335,6 +373,7 @@ def register_user():
     # Detect if this request came from admin
     from_admin = request.path.startswith("/admin/")
 
+    # OTP check for non-admin registrations
     if not from_admin:
         otp_record = OTP_STORE.get(email)
         if not otp_record or not otp_record.get("verified"):
@@ -346,11 +385,12 @@ def register_user():
 
     if is_email_registered(email):
         return jsonify({"error": "Email already registered"}), 409
-    print("afer is email register")
+
     mobile = data.get("mobile")
     if not mobile or not mobile.isdigit() or len(mobile) != 10:
         return jsonify({"error": "Invalid mobile number"}), 400
 
+    # Save uploaded profile image
     file = request.files.get("profile_picture")
     profile_path = save_profile_picture(file) if file else None
 
@@ -414,14 +454,16 @@ def register_user():
             pass
 
 
+# -------------------- Auth Check & Session --------------------
 def check_email():
+    """Check if an email already exists in DB (used during signup)."""
     email = request.args.get("email")
     exists = is_email_registered(email)
-    print("user management inside check_email()")
     return jsonify({"exists": exists})
 
 
 def user_verify() -> Response:
+    """Authenticate login credentials and initialize session."""
     email: str = request.form["email"]
     password: str = request.form["password"]
 
@@ -502,8 +544,9 @@ def user_verify() -> Response:
                 "role": str(user["role"]),
                 "log_id": log_id,
                 "full_name": full_name,
-                # ✅ store Cloudinary or local path under correct key name
-                "profile_picture_path": str(profile_pic),
+                "profile_picture_path": str(
+                    profile_pic
+                ),  # ✅ store Cloudinary or local path under correct key name
             }
 
             return jsonify({"success": True, "redirect": f"/{user['role']}_dashboard"})
@@ -516,6 +559,7 @@ def user_verify() -> Response:
 
 
 def user_logout(session):
+    """Mark logout time in DB and clear user session."""
     log_id = session.get("user", {}).get("log_id")
     if log_id:
         try:
@@ -535,6 +579,7 @@ def user_logout(session):
 
 
 def change_password():
+    """Handle password reset/update with validation and notification."""
     if request.is_json:
         data = request.get_json()
     else:
@@ -573,6 +618,28 @@ def change_password():
             print("user management inside change_password() no match found")
             return jsonify({"success": False, "error": "No matching user found"}), 404
 
+        # --- ✅ NEW CODE: Send notification ---
+        try:
+            from backend.notification_system import NotificationSystem
+
+            notif = NotificationSystem()
+
+            # Get user_id for the given email + role
+            cursor.execute(
+                "SELECT user_id FROM user_profile WHERE email=%s AND role=%s",
+                (email, role),
+            )
+            row = cursor.fetchone()
+            if row:
+                user_id = row[0]
+                notif.notify_password_reset(user_id)
+                print(
+                    f"[INFO] Notification sent for password reset of user_id={user_id}"
+                )
+        except Exception as notify_err:
+            print(f"[WARN] Password reset notification failed: {notify_err}")
+
+        # --- ✅ Send response back ---
         return (
             jsonify({"success": True, "message": "Password updated successfully"}),
             200,
@@ -597,9 +664,9 @@ def change_password():
             conn.close()
 
 
-# --------------------
+# --------------------------------------------------------------------------------
 # Read-only: StudentProfileData (split: basic vs performance)
-# --------------------
+# --------------------------------------------------------------------------------
 class StudentProfileData:
     """Read-only accessors for a student's profile and analytics (split)."""
 
@@ -703,9 +770,9 @@ class StudentProfileData:
         return None
 
 
-# --------------------
+# --------------------------------------------------------------------------------
 # Read-only: InstructorProfileData (split + backward-compatible)
-# --------------------
+# --------------------------------------------------------------------------------
 class InstructorProfileData:
     """Fetch profile + performance analytics for instructors (split)."""
 
@@ -817,9 +884,9 @@ class InstructorProfileData:
         return None
 
 
-# --------------------
+# --------------------------------------------------------------------------------
 # Read-only: AdminProfileData
-# --------------------
+# --------------------------------------------------------------------------------
 class AdminProfileData:
     """Fetch profile + address for admins."""
 
@@ -858,11 +925,9 @@ class AdminProfileData:
             pass
 
 
-# --------------------
+# --------------------------------------------------------------------------------
 # Updater: UpdateProfileData
-# --------------------
-
-
+# --------------------------------------------------------------------------------
 class UpdateProfileData(AdminProfileData):
     """
     Extends ProfileData with update capabilities.
@@ -1065,6 +1130,19 @@ class UpdateProfileData(AdminProfileData):
                 )
 
             self.conn.commit()
+            try:
+                from backend.notification_system import NotificationSystem
+
+                notif = NotificationSystem()
+                changed_fields = list(form_data.keys())  # which fields were updated
+                notif.notify_profile_updated(self.user_id, changed_fields)
+                current_app.logger.info(
+                    f"✅ Profile update notification sent to user {self.user_id}"
+                )
+            except Exception as notify_err:
+                current_app.logger.warning(
+                    f"⚠️ Failed to send profile update notification: {notify_err}"
+                )
             return {
                 "status": "success",
                 "message": "Profile info updated successfully.",
@@ -1106,6 +1184,20 @@ class UpdateProfileData(AdminProfileData):
             with self.conn.cursor() as cursor:
                 cursor.execute(query, (password_hash, self.user_id))
             self.conn.commit()
+
+            # --- ✅ NEW CODE: Send password change notification ---
+            try:
+                from backend.notification_system import NotificationSystem
+
+                notif = NotificationSystem()
+                notif.notify_password_reset(self.user_id)
+                current_app.logger.info(
+                    f"✅ Password change notification sent to user {self.user_id}"
+                )
+            except Exception as notify_err:
+                current_app.logger.warning(
+                    f"⚠️ Failed to send password change notification: {notify_err}"
+                )
 
             return {"status": "success", "message": "Password updated successfully."}
 

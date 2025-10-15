@@ -1,28 +1,48 @@
+"""
+code_submission.py
+------------------
+Manages code submission, execution, and evaluation workflow:
+- Runs code in Docker (or simulates on Render)
+- Triggers evaluation pipeline (testcases, feedback, analytics)
+- Updates grades, feedback, and assignment status
+"""
+
+# ============================================================
+# 🧩 Imports and Logger Setup
+# ============================================================
+import os
+import uuid
+import re
+import logging
+import requests
+from typing import Optional, Tuple, List, Dict, Any
+from datetime import datetime
+from flask import request, jsonify
+from markdown import markdown
+
+# Internal dependencies
 from evaluation_pipeline import EvaluationPipeline
 from grade_distribution import GradeDistributionManager
 from assignment_management import get_assignment_details
 from code_evaluation import CodeQualityEvaluator
-from flask import request, jsonify
 from db import get_connection
-from markdown import markdown
-import os
-import uuid
-import logging
-import re
-import requests
-from typing import Optional, Tuple, List, Dict, Any
 
 logger = logging.getLogger("code_submission")
 logger.setLevel(logging.INFO)
 if not logger.handlers:
-    ch = logging.StreamHandler()
-    ch.setFormatter(
+    handler = logging.StreamHandler()
+    handler.setFormatter(
         logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
     )
-    logger.addHandler(ch)
+    logger.addHandler(handler)
 
 
+# ============================================================
+# 🧪 Docker-Based Code Execution
+# ============================================================
 class CodeRunner:
+    """Executes or simulates student code within a Docker container."""
+
     def __init__(self, language: str = "python3", timeout: int = 5):
         self.language = language.lower()
         self.timeout = timeout
@@ -30,7 +50,7 @@ class CodeRunner:
         self.container = None
         self.tempfile = None
 
-        # ✅ full images (each key must be lowercase)
+        # Supported language images
         self.language_images = {
             "python": "python:3.10",
             "python3": "python:3.10",
@@ -39,6 +59,7 @@ class CodeRunner:
             "java": "openjdk:11-jdk",
         }
 
+        # Detect Render environment
         if os.environ.get("RENDER"):
             logger.warning("Render environment detected — Docker disabled.")
             self.client = None
@@ -52,17 +73,15 @@ class CodeRunner:
                 logger.error(f"Failed to initialize Docker: {e}")
                 self.client = None
 
-    # ---------------- Utility Methods ----------------
+    # --------------------- Utility Methods ---------------------
     def _write_tempfile(self, source_code: str, extension: str) -> str:
-        """Write source code to a temporary file (supports Cloudinary URLs)."""
-        if isinstance(source_code, str) and source_code.startswith(
-            "https://res.cloudinary.com"
-        ):
+        """Save code to a temporary file (supports fetching from Cloudinary)."""
+        if source_code.startswith("https://res.cloudinary.com"):
             try:
                 response = requests.get(source_code)
                 if response.status_code == 200:
                     source_code = response.text
-                    logger.info("Loaded code from Cloudinary URL")
+                    logger.info("Loaded code from Cloudinary URL.")
                 else:
                     raise ValueError(f"Failed to fetch code: {response.status_code}")
             except Exception as e:
@@ -77,15 +96,12 @@ class CodeRunner:
         return filename
 
     def _clean_output(self, text: str) -> str:
-        """Cleans unwanted characters from process output."""
-        if not text:
-            return ""
-        text = re.sub(r"[\x00-\x1F\x7F-\x9F]", "", text)
-        return text.strip()
+        """Remove control characters from process output."""
+        return re.sub(r"[\x00-\x1F\x7F-\x9F]", "", text or "").strip()
 
-    # ---------------- Docker Operations ----------------
+    # --------------------- Docker Lifecycle ---------------------
     def start_container(self, source_code: str):
-        """Start a Docker container for the selected language (with safe fallbacks)."""
+        """Start a Docker container for code execution (safe with fallback)."""
         if not self.client:
             raise RuntimeError("Docker is not available in this environment.")
 
@@ -95,9 +111,8 @@ class CodeRunner:
         image = self.language_images.get(self.language)
 
         logger.info(f"🟢 Starting Docker container using image={image}")
-
         try:
-            # ✅ Try universal idle command (works on most images)
+            # Primary idle command
             self.container = self.client.containers.run(
                 image=image,
                 command=["tail", "-f", "/dev/null"],
@@ -112,12 +127,8 @@ class CodeRunner:
             )
             logger.info("✅ Docker container started successfully using tail.")
         except Exception as e1:
-            logger.warning(
-                f"⚠️ Tail command failed ({e1}); retrying with cat fallback..."
-            )
-
+            logger.warning(f"⚠️ Tail failed ({e1}); retrying with cat fallback...")
             try:
-                # ✅ Fallback: use 'cat' — guaranteed to exist in all Linux images
                 self.container = self.client.containers.run(
                     image=image,
                     command=["cat"],
@@ -132,22 +143,19 @@ class CodeRunner:
                 )
                 logger.info("✅ Docker container started successfully using cat.")
             except Exception as e2:
-                logger.error(f"❌ Docker container start failed after fallback: {e2}")
+                logger.error(f"❌ Container start failed after fallback: {e2}")
                 raise RuntimeError(
-                    "Docker container start failed. Please ensure Docker is running and image is available."
+                    "Docker container start failed — ensure Docker is running."
                 )
 
     def exec_testcase(self, input_data: Any) -> Tuple[str, str]:
-        """Execute a single test case in the container."""
+        """Run a single testcase (returns stdout, stderr)."""
         if not self.container:
             return "", "No container active."
         return "Simulated output", ""  # simplified for Render safety
 
     def run_multiple_inputs(self, inputs: List[Any]) -> List[Dict[str, str]]:
-        """
-        Execute or simulate multiple testcases.
-        When Docker is disabled, results are simulated.
-        """
+        """Execute multiple testcases (simulated on Render)."""
         if not self.client:
             logger.info("Docker unavailable — returning simulated results.")
             return [
@@ -165,7 +173,7 @@ class CodeRunner:
         return results
 
     def stop_container(self):
-        """Clean up container and temporary files."""
+        """Stop Docker container and delete temp files."""
         if self.container:
             try:
                 self.container.remove(force=True)
@@ -182,11 +190,19 @@ class CodeRunner:
 logger = logging.getLogger("code_submission")
 
 
+# ============================================================
+# 🚀 Code Submission and Evaluation Entry Point
+# ============================================================
+
+
 def submit_code(assignment_id, student_id, source_code, language="python3") -> dict:
     """
-    Entry point for code submissions.
-    Performs syntax validation before running the full evaluation pipeline.
-    If a syntax error is detected, returns immediately with error details.
+    Main endpoint for handling student code submissions.
+    Steps:
+      1️⃣ Receive submission (assignment_id, code, etc.)
+      2️⃣ Evaluate quality, plagiarism, and test results
+      3️⃣ Compute final grade and feedback
+      4️⃣ Save everything to the database
     """
 
     logger.info(
@@ -255,9 +271,99 @@ def submit_code(assignment_id, student_id, source_code, language="python3") -> d
             instructor_id = assignment.get("instructor_id") if assignment else None
             if instructor_id:
                 mgr.update_distribution(instructor_id, grade)
-
     except Exception as e:
         logger.error(f"⚠️ Grade distribution update failed: {e}")
+
+    # ---------------- STEP 3.5: Update Feedback, Status, and Analytics ---------------- #
+    try:
+
+        conn = get_connection()
+        cur = conn.cursor()
+
+        # ✅ 1. Insert/Update feedback_score
+        try:
+            fb_score = None
+            if (
+                isinstance(result.get("feedback"), dict)
+                and "score" in result["feedback"]
+            ):
+                fb_score = float(result["feedback"]["score"])
+            else:
+                fb_score = 3.0  # neutral fallback
+            cur.execute(
+                """
+                INSERT INTO feedback_score (submission_id, feedback_score)
+                SELECT submission_id, %s FROM code_submission
+                WHERE user_id=%s AND assignment_id=%s
+                ORDER BY submitted_on DESC LIMIT 1
+                ON DUPLICATE KEY UPDATE feedback_score = VALUES(feedback_score)
+                """,
+                (fb_score, student_id, assignment_id),
+            )
+            conn.commit()
+        except Exception as e:
+            logger.warning(f"Feedback score insert/update failed: {e}")
+        # ✅ 2. Update student_assignment_status (fix ENUM mismatch)
+        try:
+            # Fetch due date to check if submission was on time or late
+            cur.execute(
+                "SELECT due_date FROM assignment WHERE assignment_id=%s",
+                (assignment_id,),
+            )
+            due_row = cur.fetchone()
+
+            # Determine correct ENUM value
+            if not due_row or not due_row[0]:
+                status_value = "Pending Submission"
+            else:
+                due_date = due_row[0]
+                if datetime.now() > due_date:
+                    status_value = "Submitted Late"
+                else:
+                    status_value = "Submitted On Time"
+
+            # ✅ Ensure value matches ENUM exactly
+            cur.execute(
+                """
+                INSERT INTO student_assignment_status (user_id, assignment_id, status, submitted_at)
+                VALUES (%s, %s, %s, NOW())
+                ON DUPLICATE KEY UPDATE
+                status = VALUES(status),
+                updated_at = NOW()
+                """,
+                (student_id, assignment_id, status_value),
+            )
+            conn.commit()
+
+        except Exception as e:
+            logger.warning(f"Student assignment status update failed: {e}")
+
+        # ✅ 3. Update difficulty stats and performance analytics (single-user)
+        try:
+            from analytics import (
+                StudentDifficultyAnalytics,
+                InstructorDifficultyAnalytics,
+                student_performance_analytics,
+                instructor_performance_analytics,
+            )
+
+            # update student difficulty + performance
+            StudentDifficultyAnalytics().update_user_stats(student_id)
+            student_performance_analytics.update_user(student_id)
+
+            # update instructor difficulty + performance
+            assignment = get_assignment_details(assignment_id)
+            instructor_id = assignment.get("instructor_id") if assignment else None
+            if instructor_id:
+                InstructorDifficultyAnalytics().update_user_stats(instructor_id)
+                instructor_performance_analytics.update_user(instructor_id)
+        except Exception as e:
+            logger.warning(f"Analytics update failed: {e}")
+
+        cur.close()
+        conn.close()
+    except Exception as e:
+        logger.exception("Post-submission analytics pipeline failed: %s", e)
 
     # ---------------- STEP 4: Return Final Result ---------------- #
     result["status"] = "success"

@@ -1,3 +1,15 @@
+"""
+analytics.py
+-------------
+Implements all analytics and reporting functions for the system.
+Includes:
+- Aggregation of code submission, grading, and performance metrics
+- Real-time analytics for instructors and administrators
+- Database abstraction layer for clean, reusable queries
+- Utilities for normalization, visualization, and statistical insights
+"""
+
+# 🧩 Imports and Logger Setup
 import json
 import logging
 import os
@@ -5,7 +17,7 @@ import threading
 from typing import Any, Dict, List, Optional, cast
 from decimal import Decimal
 from datetime import date, datetime, timedelta, time
-import time as time_module
+import time
 from typing import Any, Mapping, Sequence
 from backend.db import get_connection
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -305,6 +317,7 @@ class AssignmentAnalyticsService:
     """Calculate and maintain per-assignment analytics."""
 
     CACHE_FILE = "assignment_analytics_cache.json"
+    print("inside the assingment analytics service")
 
     def __init__(self):
         # simple cache file storing last-updated timestamps
@@ -543,39 +556,72 @@ class DifficultyAnalyticsBase:
         self, user_id: int, level_id: int
     ) -> Dict[str, Any]:
         """
-        Returns a dict with assignment_count, average_score, average_pass_rate, average_feedback_score
-        based on assignments of that difficulty for the given user.
+        Returns assignment_count, average_score, average_pass_rate, average_feedback_score
+        For students: based on their submissions (cs.user_id = user_id)
+        For instructors: based on students' submissions on assignments they created (a.instructor_id = user_id)
         """
         with DBConnection() as cur:
-            cur.execute(
-                """
-                SELECT
-                  COUNT(DISTINCT a.assignment_id) AS assignment_count,
-                  AVG(ce.score) AS average_score,
-                  SUM(CASE WHEN ce.score >= 40 THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0) * 100 AS average_pass_rate,
-                  AVG(fs.feedback_score) AS average_feedback_score
-                FROM assignment a
-                JOIN code_submission cs ON a.assignment_id = cs.assignment_id
-                LEFT JOIN code_evaluation ce ON cs.submission_id = ce.submission_id
-                LEFT JOIN feedback_score fs ON cs.submission_id = fs.submission_id
-                WHERE cs.user_id=%s AND a.difficulty_level=%s
-                """,
-                (user_id, level_id),
-            )
-            row = cur.fetchone() or {}
-            return {
-                "assignment_count": int(row.get("assignment_count") or 0),
-                "average_score": float(row.get("average_score") or 0.0),
-                "average_pass_rate": float(row.get("average_pass_rate") or 0.0),
-                "average_feedback_score": float(
-                    row.get("average_feedback_score") or 0.0
-                ),
-            }
+            try:
+                is_instructor_table = "instructor" in self.table.lower()
+                if is_instructor_table:
+                    # aggregate student performance on this instructor's assignments
+                    cur.execute(
+                        """
+                        SELECT
+                        COUNT(DISTINCT a.assignment_id) AS assignment_count,
+                        AVG(ce.score) AS average_score,
+                        SUM(CASE WHEN ce.score >= 40 THEN 1 ELSE 0 END) / NULLIF(COUNT(ce.score),0) * 100 AS average_pass_rate,
+                        AVG(fs.feedback_score) AS average_feedback_score
+                        FROM assignment a
+                        JOIN code_submission cs ON a.assignment_id = cs.assignment_id
+                        LEFT JOIN code_evaluation ce ON cs.submission_id = ce.submission_id
+                        LEFT JOIN feedback_score fs ON cs.submission_id = fs.submission_id
+                        WHERE a.instructor_id = %s AND a.difficulty_level = %s
+                        """,
+                        (user_id, level_id),
+                    )
+                else:
+                    # student-centric aggregation
+                    cur.execute(
+                        """
+                        SELECT
+                        COUNT(DISTINCT a.assignment_id) AS assignment_count,
+                        AVG(ce.score) AS average_score,
+                        SUM(CASE WHEN ce.score >= 40 THEN 1 ELSE 0 END) / NULLIF(COUNT(ce.score),0) * 100 AS average_pass_rate,
+                        AVG(fs.feedback_score) AS average_feedback_score
+                        FROM assignment a
+                        JOIN code_submission cs ON a.assignment_id = cs.assignment_id
+                        LEFT JOIN code_evaluation ce ON cs.submission_id = ce.submission_id
+                        LEFT JOIN feedback_score fs ON cs.submission_id = fs.submission_id
+                        WHERE cs.user_id = %s AND a.difficulty_level = %s
+                        """,
+                        (user_id, level_id),
+                    )
+                row = cur.fetchone() or {}
+                return {
+                    "assignment_count": int(row.get("assignment_count") or 0),
+                    "average_score": float(row.get("average_score") or 0.0),
+                    "average_pass_rate": float(row.get("average_pass_rate") or 0.0),
+                    "average_feedback_score": float(
+                        row.get("average_feedback_score") or 0.0
+                    ),
+                }
+            except Exception:
+                logger.exception(
+                    "Difficulty level metrics calculation failed for %s on %s",
+                    user_id,
+                    self.table,
+                )
+                return {
+                    "assignment_count": 0,
+                    "average_score": 0.0,
+                    "average_pass_rate": 0.0,
+                    "average_feedback_score": 0.0,
+                }
 
     def update_user_stats(self, user_id: int) -> bool:
         """Recalculate all difficulty levels for a single user and upsert rows."""
         try:
-            # fetch all levels
             with DBConnection() as cur:
                 cur.execute("SELECT level_id FROM difficulty_level")
                 levels = cur.fetchall()
@@ -584,28 +630,52 @@ class DifficultyAnalyticsBase:
                 for lvl in levels:
                     lid = lvl["level_id"]
                     metrics = self._calculate_level_metrics_for_user(user_id, lid)
-                    # upsert
-                    cur.execute(
-                        f"""
-                        INSERT INTO {self.table}
-                        (user_id, difficulty_level, assignment_count, average_score, average_pass_rate, average_feedback_score)
-                        VALUES (%s,%s,%s,%s,%s,%s)
-                        ON DUPLICATE KEY UPDATE
-                          assignment_count=VALUES(assignment_count),
-                          average_score=VALUES(average_score),
-                          average_pass_rate=VALUES(average_pass_rate),
-                          average_feedback_score=VALUES(average_feedback_score)
-                        """,
-                        (
-                            user_id,
-                            lid,
-                            metrics["assignment_count"],
-                            metrics["average_score"],
-                            metrics["average_pass_rate"],
-                            metrics["average_feedback_score"],
-                        ),
-                    )
+
+                    # Instructor table includes feedback
+                    if self.table == "instructor_difficulty_stats":
+                        cur.execute(
+                            f"""
+                            INSERT INTO {self.table}
+                            (user_id, difficulty_level, assignment_count, average_score, average_pass_rate, average_feedback_score)
+                            VALUES (%s,%s,%s,%s,%s,%s)
+                            ON DUPLICATE KEY UPDATE
+                            assignment_count=VALUES(assignment_count),
+                            average_score=VALUES(average_score),
+                            average_pass_rate=VALUES(average_pass_rate),
+                            average_feedback_score=VALUES(average_feedback_score)
+                            """,
+                            (
+                                user_id,
+                                lid,
+                                metrics.get("assignment_count", 0),
+                                metrics.get("average_score", 0.0),
+                                metrics.get("average_pass_rate", 0.0),
+                                metrics.get("average_feedback_score", 0.0),
+                            ),
+                        )
+                    else:
+                        # Student table (no feedback)
+                        cur.execute(
+                            f"""
+                            INSERT INTO {self.table}
+                            (user_id, difficulty_level, assignment_count, average_score, average_pass_rate)
+                            VALUES (%s,%s,%s,%s,%s)
+                            ON DUPLICATE KEY UPDATE
+                            assignment_count=VALUES(assignment_count),
+                            average_score=VALUES(average_score),
+                            average_pass_rate=VALUES(average_pass_rate)
+                            """,
+                            (
+                                user_id,
+                                lid,
+                                metrics.get("assignment_count", 0),
+                                metrics.get("average_score", 0.0),
+                                metrics.get("average_pass_rate", 0.0),
+                            ),
+                        )
+
             return True
+
         except Exception:
             logger.exception(
                 "update_user_stats failed for %s on table %s", user_id, self.table
@@ -695,15 +765,15 @@ class StudentPerformanceAnalytics(PerformanceAnalyticsBase):
     def update_user(self, user_id: int) -> bool:
         try:
             with DBConnection() as cur:
-                # get aggregate metrics for the student across all their submissions
+                # Get overall student performance metrics
                 cur.execute(
                     """
                     SELECT
-                      AVG(ce.score) AS avg_score,
-                      SUM(CASE WHEN ce.score >= 40 THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0) * 100 AS pass_rate,
-                      COUNT(DISTINCT cs.assignment_id) AS assignments_submitted,
-                      SUM(CASE WHEN ce.plagiarism_score > 50 THEN 1 ELSE 0 END) AS plagiarism_incidents,
-                      AVG(fs.feedback_score) AS avg_feedback
+                    AVG(ce.score) AS avg_score,
+                    SUM(CASE WHEN ce.score >= 40 THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0) * 100 AS pass_rate,
+                    COUNT(DISTINCT cs.assignment_id) AS assignments_submitted,
+                    SUM(CASE WHEN ce.plagiarism_score > 50 THEN 1 ELSE 0 END) AS plagiarism_incidents,
+                    AVG(fs.feedback_score) AS avg_feedback
                     FROM code_submission cs
                     LEFT JOIN code_evaluation ce ON cs.submission_id=ce.submission_id
                     LEFT JOIN feedback_score fs ON cs.submission_id=fs.submission_id
@@ -717,9 +787,20 @@ class StudentPerformanceAnalytics(PerformanceAnalyticsBase):
                 pass_rate = float(agg.get("pass_rate") or 0.0)
                 assignments_submitted = int(agg.get("assignments_submitted") or 0)
                 plagiarism_incidents = int(agg.get("plagiarism_incidents") or 0)
-                avg_feedback = float(agg.get("avg_feedback") or 0.0)
 
-                # completion_rate: (distinct assignments submitted) / (total assignments) * 100
+                # ✅ Get linked distribution_id from grade_distribution
+                cur.execute(
+                    """
+                    SELECT distribution_id FROM grade_distribution
+                    WHERE related_id=%s
+                    ORDER BY distribution_id DESC LIMIT 1
+                    """,
+                    (user_id,),
+                )
+                dist_row = cur.fetchone()
+                distribution_id = dist_row["distribution_id"] if dist_row else None
+
+                # ✅ Compute completion rate
                 cur.execute("SELECT COUNT(*) AS total_assignments FROM assignment")
                 total_assignments = cur.fetchone().get("total_assignments") or 0
                 completion_rate = (
@@ -728,7 +809,7 @@ class StudentPerformanceAnalytics(PerformanceAnalyticsBase):
                     else 0.0
                 )
 
-                # performance band
+                # ✅ Determine performance band
                 if avg_score >= 80:
                     band = "Excellent"
                 elif avg_score >= 60:
@@ -738,7 +819,7 @@ class StudentPerformanceAnalytics(PerformanceAnalyticsBase):
                 else:
                     band = "Poor"
 
-                # performance level (arbitrary buckets)
+                # ✅ Determine performance level
                 if avg_score < 40:
                     perf_level = "L1"
                 elif avg_score < 70:
@@ -746,22 +827,24 @@ class StudentPerformanceAnalytics(PerformanceAnalyticsBase):
                 else:
                     perf_level = "L3"
 
-                # upsert into student performance table
+                # ✅ Update or insert into student performance analytics
                 cur.execute(
                     """
                     INSERT INTO student_performance_analytics
                     (user_id, average_score, completion_rate, pass_rate,
-                     plagiarism_incidents, performance_band, total_assignments, performance_level, last_updated)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,NOW())
+                    plagiarism_incidents, performance_band, total_assignments,
+                    performance_level, last_updated, distribution_id)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,NOW(),%s)
                     ON DUPLICATE KEY UPDATE
-                      average_score=VALUES(average_score),
-                      completion_rate=VALUES(completion_rate),
-                      pass_rate=VALUES(pass_rate),
-                      plagiarism_incidents=VALUES(plagiarism_incidents),
-                      performance_band=VALUES(performance_band),
-                      total_assignments=VALUES(total_assignments),
-                      performance_level=VALUES(performance_level),
-                      last_updated=NOW()
+                    average_score=VALUES(average_score),
+                    completion_rate=VALUES(completion_rate),
+                    pass_rate=VALUES(pass_rate),
+                    plagiarism_incidents=VALUES(plagiarism_incidents),
+                    performance_band=VALUES(performance_band),
+                    total_assignments=VALUES(total_assignments),
+                    performance_level=VALUES(performance_level),
+                    distribution_id=VALUES(distribution_id),
+                    last_updated=NOW()
                     """,
                     (
                         user_id,
@@ -772,9 +855,12 @@ class StudentPerformanceAnalytics(PerformanceAnalyticsBase):
                         band,
                         assignments_submitted,
                         perf_level,
+                        distribution_id,
                     ),
                 )
+
             return True
+
         except Exception:
             logger.exception(
                 "studentPerformanceAnalytics.update_user failed for %s", user_id
@@ -787,23 +873,27 @@ class InstructorPerformanceAnalytics(PerformanceAnalyticsBase):
         super().__init__("instructor_performance_analytics")
 
     def update_user(self, user_id: int) -> bool:
+        """
+        Update instructor performance analytics with linkage to difficulty stats.
+        Ensures one consistent record per instructor and updates all key metrics.
+        """
         try:
             with DBConnection() as cur:
-                # aggregate metrics for assignments created by instructor
+                # --- Aggregate core metrics for this instructor ---
                 cur.execute(
                     """
                     SELECT
-                      COUNT(DISTINCT a.assignment_id) AS total_assignments,
-                      COUNT(cs.submission_id) AS total_submissions,
-                      AVG(ce.score) AS avg_score,
-                      SUM(CASE WHEN ce.score >= 40 THEN 1 ELSE 0 END) / NULLIF(COUNT(ce.score),0) * 100 AS avg_pass_rate,
-                      SUM(CASE WHEN ce.plagiarism_score > 50 THEN 1 ELSE 0 END) / NULLIF(COUNT(ce.score),0) * 100 AS plagiarism_rate,
-                      AVG(fs.feedback_score) AS avg_feedback
+                    COUNT(DISTINCT a.assignment_id) AS total_assignments,
+                    COUNT(cs.submission_id) AS total_submissions,
+                    AVG(ce.score) AS avg_score,
+                    SUM(CASE WHEN ce.score >= 40 THEN 1 ELSE 0 END) / NULLIF(COUNT(ce.score),0) * 100 AS avg_pass_rate,
+                    SUM(CASE WHEN ce.plagiarism_score > 50 THEN 1 ELSE 0 END) / NULLIF(COUNT(ce.score),0) * 100 AS plagiarism_rate,
+                    AVG(fs.feedback_score) AS avg_feedback
                     FROM assignment a
                     LEFT JOIN code_submission cs ON a.assignment_id = cs.assignment_id
                     LEFT JOIN code_evaluation ce ON cs.submission_id = ce.submission_id
                     LEFT JOIN feedback_score fs ON cs.submission_id = fs.submission_id
-                    WHERE a.instructor_id=%s
+                    WHERE a.instructor_id = %s
                     """,
                     (user_id,),
                 )
@@ -816,26 +906,43 @@ class InstructorPerformanceAnalytics(PerformanceAnalyticsBase):
                 plagiarism_rate = float(agg.get("plagiarism_rate") or 0.0)
                 avg_feedback = float(agg.get("avg_feedback") or 0.0)
 
-                # placeholders for responsiveness/consistency can be derived from activity logs; set default if not available
+                # --- Link to instructor_difficulty_stats ---
+                cur.execute(
+                    """
+                    SELECT instructor_stats_id
+                    FROM instructor_difficulty_stats
+                    WHERE user_id = %s
+                    ORDER BY average_score DESC
+                    LIMIT 1
+                    """,
+                    (user_id,),
+                )
+                diff_row = cur.fetchone()
+                instructor_ds_id = diff_row["instructor_stats_id"] if diff_row else None
+
+                # --- Static tie scores ---
                 responsiveness_score = 80.0
                 consistency_score = 90.0
 
+                # --- Insert or update analytics record ---
                 cur.execute(
                     """
                     INSERT INTO instructor_performance_analytics
-                    (user_id, total_assignments_created, total_submissions_received, overall_avg_score,
-                     avg_pass_rate, plagiarism_rate, feedback_score_avg, responsiveness_score, consistency_score, last_updated)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())
+                    (user_id, total_assignments_created, total_submissions_received,
+                    overall_avg_score, avg_pass_rate, plagiarism_rate, feedback_score_avg,
+                    responsiveness_score, consistency_score, instructor_ds_id, last_updated)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())
                     ON DUPLICATE KEY UPDATE
-                      total_assignments_created=VALUES(total_assignments_created),
-                      total_submissions_received=VALUES(total_submissions_received),
-                      overall_avg_score=VALUES(overall_avg_score),
-                      avg_pass_rate=VALUES(avg_pass_rate),
-                      plagiarism_rate=VALUES(plagiarism_rate),
-                      feedback_score_avg=VALUES(feedback_score_avg),
-                      responsiveness_score=VALUES(responsiveness_score),
-                      consistency_score=VALUES(consistency_score),
-                      last_updated=NOW()
+                    total_assignments_created=VALUES(total_assignments_created),
+                    total_submissions_received=VALUES(total_submissions_received),
+                    overall_avg_score=VALUES(overall_avg_score),
+                    avg_pass_rate=VALUES(avg_pass_rate),
+                    plagiarism_rate=VALUES(plagiarism_rate),
+                    feedback_score_avg=VALUES(feedback_score_avg),
+                    responsiveness_score=VALUES(responsiveness_score),
+                    consistency_score=VALUES(consistency_score),
+                    instructor_ds_id=VALUES(instructor_ds_id),
+                    last_updated=NOW()
                     """,
                     (
                         user_id,
@@ -847,9 +954,12 @@ class InstructorPerformanceAnalytics(PerformanceAnalyticsBase):
                         avg_feedback,
                         responsiveness_score,
                         consistency_score,
+                        instructor_ds_id,
                     ),
                 )
+
             return True
+
         except Exception:
             logger.exception(
                 "InstructorPerformanceAnalytics.update_user failed for %s", user_id

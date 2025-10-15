@@ -1,3 +1,16 @@
+"""
+code_evaluation.py
+-------------------
+Performs static code analysis and quality evaluation.
+Includes:
+- Syntax validation and linting
+- Cyclomatic complexity computation
+- Code length and structure metrics
+- Returns normalized quality scores used in grading and feedback generation
+"""
+
+# 🧩 Imports and Logger Setup
+
 import ast
 import logging
 import time

@@ -1,12 +1,25 @@
-from backend.db import get_connection
-from datetime import datetime
+"""
+assignment_management.py
+-------------------------
+Handles all backend logic related to assignments and submissions.
+Includes:
+- Assignment creation, editing, and deletion (for instructors)
+- Test case management and validation
+- Database integration for assignment metadata
+- Utility functions for student submission handling and version tracking
+"""
+
+# 🧩 Imports and Logger Setup
 import logging
 from flask import request
-from contextlib import contextmanager
-from backend.notification_system import NotificationSystem
 import csv
 from io import TextIOWrapper
 from flask import session
+from datetime import datetime
+from contextlib import contextmanager
+
+from backend.db import get_connection
+from backend.notification_system import NotificationSystem
 
 
 # instantiate once

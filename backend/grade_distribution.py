@@ -1,3 +1,14 @@
+# backend/grade_distribution.py
+"""
+Grade Distribution Manager
+--------------------------
+Manages grade distribution data across users and assignments.
+Handles:
+- Grade count storage per user (insert/update/reset)
+- Aggregation and trend analysis
+- Chart-ready data for visualizations
+"""
+
 from collections import defaultdict
 from datetime import datetime, date
 from backend.db import get_connection
@@ -6,14 +17,15 @@ from typing import Dict
 
 class GradeDistributionManager:
     """
-    Central manager for grade distribution:
-    - Insert, update, read distributions
-    - Chart-ready data for visualizations
-    - Trends over time (from submissions)
+    Central manager for grade distribution.
+    Responsibilities:
+    - Insert, update, and read grade distributions
+    - Provide chart-ready data for visualizations
+    - Analyze grade trends over time from submissions
     """
 
     def __init__(self):
-
+        # Map of letter grades to corresponding database columns
         self.grade_map = {
             "A": "grade_a",
             "B": "grade_b",
@@ -23,10 +35,14 @@ class GradeDistributionManager:
             "F": "grade_f",
         }
 
-    # -------------------------------
-    # 🔹 Internal Utilities (fresh connection per call)
-    # -------------------------------
+    # ===========================================================
+    # 🔹 INTERNAL UTILITIES — Manage database connections safely
+    # ===========================================================
     def _fetchone(self, query, params=None):
+        """
+        Execute a query and return a single record.
+        Raises an exception on DB error.
+        """
         try:
             with get_connection() as conn:
                 cur = conn.cursor()
@@ -39,6 +55,10 @@ class GradeDistributionManager:
             raise
 
     def _fetchall(self, query, params=None):
+        """
+        Execute a query and return all rows as a list.
+        Raises an exception on DB error.
+        """
         try:
             with get_connection() as conn:
                 cur = conn.cursor()
@@ -51,6 +71,10 @@ class GradeDistributionManager:
             raise
 
     def _execute(self, query, params=None):
+        """
+        Execute a write query (INSERT, UPDATE, DELETE).
+        Commits automatically. Raises on error.
+        """
         try:
             with get_connection() as conn:
                 cur = conn.cursor()
@@ -62,30 +86,42 @@ class GradeDistributionManager:
             raise
 
     def _ensure_distribution_row(self, related_id: int):
-        """Ensure that a distribution row exists for a student or instructor."""
+        """
+        Ensure that a grade_distribution record exists for the given user.
+        If missing, insert a zeroed-out distribution row.
+        """
         row = self._fetchone(
             "SELECT distribution_id FROM grade_distribution WHERE related_id = %s",
             (related_id,),
         )
         if not row:
             self._execute(
-                "INSERT INTO grade_distribution (related_id, grade_a, grade_b, grade_c, grade_d, grade_e, grade_f) "
-                "VALUES (%s, 0, 0, 0, 0, 0, 0)",
+                """
+                INSERT INTO grade_distribution (related_id, grade_a, grade_b, grade_c, grade_d, grade_e, grade_f)
+                VALUES (%s, 0, 0, 0, 0, 0, 0)
+                """,
                 (related_id,),
             )
 
-    # -------------------------------
-    # 🔹 Insert / Update
-    # -------------------------------
+    # ===========================================================
+    # 🔹 INSERT / UPDATE OPERATIONS
+    # ===========================================================
     def update_distribution(self, related_id: int, grade: str):
         """
-        Increment the count for a grade for a student/instructor.
+        Increment the count for a specific grade belonging to a user.
+
+        Args:
+            related_id (int): ID of the student/instructor.
+            grade (str): Letter grade (A–F) to increment.
         """
         if grade not in self.grade_map:
-            return
+            return  # Ignore invalid grades
 
+        # Ensure the record exists before updating
         self._ensure_distribution_row(related_id)
         column = self.grade_map[grade]
+
+        # Increment selected grade column
         self._execute(
             f"UPDATE grade_distribution SET {column} = {column} + 1 WHERE related_id = %s",
             (related_id,),
@@ -93,29 +129,43 @@ class GradeDistributionManager:
 
     def reset_distribution(self, related_id: int):
         """
-        Reset a user’s distribution (all grade counts to 0).
+        Reset all grade counts for a specific user to zero.
+
+        Args:
+            related_id (int): ID of the student/instructor.
         """
         self._ensure_distribution_row(related_id)
+
+        # Reset all grade columns to 0
         self._execute(
-            "UPDATE grade_distribution SET grade_a=0, grade_b=0, grade_c=0, grade_d=0, grade_e=0, grade_f=0 "
-            "WHERE related_id = %s",
+            """
+            UPDATE grade_distribution
+            SET grade_a=0, grade_b=0, grade_c=0,
+                grade_d=0, grade_e=0, grade_f=0
+            WHERE related_id = %s
+            """,
             (related_id,),
         )
 
-    # -------------------------------
-    # 🔹 Read
-    # -------------------------------
+    # ===========================================================
+    # 🔹 READ OPERATIONS
+    # ===========================================================
     def get_distribution(self, related_id: int):
         """
-        Fetch grade distribution for a specific related_id.
-        Returns dict { 'A': count, ... }
+        Retrieve the grade distribution for a specific user.
+        Args: related_id (int): User ID (student or instructor).
+        Returns: dict: { 'A': count, 'B': count, ..., 'F': count }
         """
         row = self._fetchone(
-            "SELECT grade_a, grade_b, grade_c, grade_d, grade_e, grade_f "
-            "FROM grade_distribution WHERE related_id = %s",
+            """
+            SELECT grade_a, grade_b, grade_c, grade_d, grade_e, grade_f
+            FROM grade_distribution
+            WHERE related_id = %s
+            """,
             (related_id,),
         )
 
+        # If user has no record, return zeroed distribution
         if not row:
             return {g: 0 for g in self.grade_map.keys()}
 
@@ -123,27 +173,46 @@ class GradeDistributionManager:
 
     def get_all_distributions(self):
         """
-        Fetch distributions for all users.
-        Returns dict[user_id] = { 'A': count, ... }
+        Retrieve grade distributions for all users.
+
+        Returns:
+            dict[user_id] = { 'A': count, ..., 'F': count }
         """
         rows = self._fetchall(
-            "SELECT related_id, grade_a, grade_b, grade_c, grade_d, grade_e, grade_f "
-            "FROM grade_distribution"
+            """
+            SELECT related_id, grade_a, grade_b, grade_c, grade_d, grade_e, grade_f
+            FROM grade_distribution
+            """
         )
+
         result = {}
         for related_id, a, b, c, d, e, f in rows:
-            result[related_id] = {"A": a, "B": b, "C": c, "D": d, "E": e, "F": f}
+            result[related_id] = {
+                "A": a,
+                "B": b,
+                "C": c,
+                "D": d,
+                "E": e,
+                "F": f,
+            }
         return result
 
     def get_overall_distribution(self):
         """
-        Fetch system-wide grade distribution.
-        Returns dict { 'A': total_a, ... }
+        Retrieve the total grade distribution across all users.
+
+        Returns:
+            dict: { 'A': total_A, 'B': total_B, ..., 'F': total_F }
         """
         row = self._fetchone(
-            "SELECT SUM(grade_a), SUM(grade_b), SUM(grade_c), SUM(grade_d), SUM(grade_e), SUM(grade_f) "
-            "FROM grade_distribution"
+            """
+            SELECT SUM(grade_a), SUM(grade_b), SUM(grade_c),
+                   SUM(grade_d), SUM(grade_e), SUM(grade_f)
+            FROM grade_distribution
+            """
         )
+
+        # Return zeros if no data found
         if not row:
             return {g: 0 for g in self.grade_map.keys()}
 
